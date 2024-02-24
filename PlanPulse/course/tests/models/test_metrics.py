@@ -73,7 +73,16 @@ class TestTime(unittest.TestCase):
             self.time.get(-5)
             self.time.get(True)
             
+    def test_put(self):
+        self.assertEqual(self.time.put(timedelta(seconds=5)), Decimal('5.00'))
+        self.assertEqual(self.time.put(timedelta(seconds=0)), Decimal('0.00'))
+        self.assertEqual(self.time.put(timedelta(minutes=1)), Decimal('60.00'))
+        self.assertEqual(self.time.put(timedelta(hours=1)), Decimal('3600.00'))
 
+        with self.assertRaises(ValidationError):
+            self.time.put(timedelta(seconds=-5))
+            self.time.put(-5)
+            self.time.put(True)
 
     
 
