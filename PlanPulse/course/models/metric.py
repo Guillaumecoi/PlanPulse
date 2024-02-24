@@ -106,7 +106,16 @@ class Boolean(Metric):
 
 class Percentage(Metric):
     def get(self, value):
+        self.isPercentage(value)
         return value
+    
+
+
+    def isPercentage(self, value):
+        if not isinstance(value, Decimal):
+            raise ValidationError('Invalid percentage value')
+        if not 0 <= value <= 100:
+            raise ValidationError('Invalid percentage value')
     
 
     
