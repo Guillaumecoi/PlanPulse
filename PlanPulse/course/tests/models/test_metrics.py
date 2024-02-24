@@ -109,5 +109,56 @@ class TestTime(unittest.TestCase):
             self.time.subtract(timedelta(seconds=5), timedelta(seconds=-3))
             self.time.subtract(timedelta(seconds=-5), timedelta(seconds=-3))
 
+
+class TestPercentage(unittest.TestCase):
+    def setUp(self):
+        self.percentage = Percentage()
+
+    def test_get(self):
+        self.assertEqual(self.percentage.get(Decimal(5.00)), Decimal(5.00))
+        self.assertEqual(self.percentage.get(Decimal(0.00)), Decimal(0.00))
+        self.assertEqual(self.percentage.get(Decimal(100.00)), Decimal(100.00))
+
+        with self.assertRaises(ValidationError):
+            self.percentage.get(Decimal(-5.00))
+            self.percentage.get(-5)
+            self.percentage.get(True)
+            self.percentage.get(Decimal(101.00))
+
+    def test_put(self):
+        self.assertEqual(self.percentage.put(Decimal(5.00)), Decimal(5.00))
+        self.assertEqual(self.percentage.put(Decimal(0.00)), Decimal(0.00))
+        self.assertEqual(self.percentage.put(Decimal(100.00)), Decimal(100.00))
+
+        with self.assertRaises(ValidationError):
+            self.percentage.put(Decimal(-5.00))
+            self.percentage.put(-5)
+            self.percentage.put(True)
+            self.percentage.put(Decimal(101.00))
+
+    def test_add(self):
+        self.assertEqual(self.percentage.add(Decimal(5.00), Decimal(3.00)), Decimal(8.00))
+        self.assertEqual(self.percentage.add(Decimal(0.00), Decimal(0.00)), Decimal(0.00))
+        self.assertEqual(self.percentage.add(Decimal(100.00), Decimal(0.00)), Decimal(100.00))
+
+        with self.assertRaises(ValidationError):
+            self.percentage.add(Decimal(-5.00), Decimal(3.00))
+            self.percentage.add(Decimal(5.00), Decimal(-3.00))
+            self.percentage.add(Decimal(-5.00), Decimal(-3.00))
+            self.percentage.add(Decimal(95.00), Decimal(10.00)) # 95 + 10 = 105
+            self.percentage.add(Decimal(101.00), Decimal(3.00))
+
+    def test_subtract(self):
+        self.assertEqual(self.percentage.subtract(Decimal(5.00), Decimal(3.00)), Decimal(2.00))
+        self.assertEqual(self.percentage.subtract(Decimal(0.00), Decimal(0.00)), Decimal(0.00))
+        self.assertEqual(self.percentage.subtract(Decimal(100.00), Decimal(0.00)), Decimal(100.00))
+
+        with self.assertRaises(ValidationError):
+            self.percentage.subtract(Decimal(5.00), Decimal(10.00))
+            self.percentage.subtract(Decimal(-5.00), Decimal(3.00))
+            self.percentage.subtract(Decimal(5.00), Decimal(-3.00))
+            self.percentage.subtract(Decimal(-5.00), Decimal(-3.00))
+            self.percentage.subtract(Decimal(101.00), Decimal(3.00))
+
     
 
