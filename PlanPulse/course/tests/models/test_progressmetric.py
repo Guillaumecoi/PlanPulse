@@ -1,4 +1,5 @@
 import unittest
+from django.forms import ValidationError
 from django.test import TestCase
 from datetime import timedelta
 from decimal import Decimal
@@ -23,3 +24,23 @@ class ProgressMetricsTest(TestCase):
         self.assertEqual(self.progress_metric_time.get(Decimal(5.00)), timedelta(seconds=5))
         self.assertEqual(self.progress_metric_boolean.get(1), True)
         self.assertEqual(self.progress_metric_percentage.get(Decimal(5.00)), Decimal(5.00))
+
+    def test_get_incorrect(self):
+        with self.assertRaises(ValidationError):
+            self.progress_metric_number.get(Decimal(-5.00))
+            self.progress_metric_time.get(Decimal(-5.00))
+            self.progress_metric_boolean.get(5)
+            self.progress_metric_percentage.get(Decimal(-5.00))
+
+    def test_put_correct(self):
+        self.assertEqual(self.progress_metric_number.put(5), 5)
+        self.assertEqual(self.progress_metric_time.put(timedelta(seconds=5)), Decimal(5.00))
+        self.assertEqual(self.progress_metric_boolean.put(True), 1)
+        self.assertEqual(self.progress_metric_percentage.put(Decimal(5.00)), Decimal(5.00))
+
+    def test_put_incorrect(self):
+        with self.assertRaises(ValidationError):
+            self.progress_metric_number.put(-5)
+            self.progress_metric_time.put(timedelta(seconds=-5))
+            self.progress_metric_boolean.put(5)
+            self.progress_metric_percentage.put(Decimal(-5.00))
