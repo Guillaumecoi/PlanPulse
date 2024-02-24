@@ -84,5 +84,17 @@ class TestTime(unittest.TestCase):
             self.time.put(-5)
             self.time.put(True)
 
+    def test_add(self):
+        self.assertEqual(self.time.add(timedelta(seconds=5), timedelta(seconds=3)), timedelta(seconds=8))
+        self.assertEqual(self.time.add(timedelta(seconds=0), timedelta(seconds=0)), timedelta(seconds=0))
+        self.assertEqual(self.time.add(timedelta(minutes=1), timedelta(seconds=0)), timedelta(minutes=1))
+        self.assertEqual(self.time.add(timedelta(hours=1), timedelta(seconds=0)), timedelta(hours=1))
+        self.assertEqual(self.time.add(timedelta(hours=1), timedelta(minutes=1)), timedelta(hours=1, minutes=1))
+
+        with self.assertRaises(ValidationError):
+            self.time.add(timedelta(seconds=-5), timedelta(seconds=3))
+            self.time.add(timedelta(seconds=5), timedelta(seconds=-3))
+            self.time.add(timedelta(seconds=-5), timedelta(seconds=-3))
+
     
 
