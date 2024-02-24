@@ -59,6 +59,11 @@ class Time(Metric):
     def put(self, value):
         self.isTimeDelta(value)
         return Decimal(value.total_seconds())
+    
+    def add(self, value1, value2):
+        self.isTimeDelta(value1)
+        self.isTimeDelta(value2)
+        return value1 + value2
 
     def isTimeDecimal(self, value):
         if not isinstance(value, Decimal):
