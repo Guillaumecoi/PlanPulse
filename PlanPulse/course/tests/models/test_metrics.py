@@ -1,6 +1,8 @@
 import unittest
 
 from django.forms import ValidationError
+from datetime import timedelta
+
 from course.models.metric import Number, Boolean, Time, Percentage
 
 class NumberTest(unittest.TestCase):
@@ -53,3 +55,22 @@ class TestBoolean(unittest.TestCase):
     def test_subtract(self):
         with self.assertRaises(ValidationError):
             self.boolean.subtract(True, False)
+
+
+class TestTime(unittest.TestCase):
+    def setUp(self):
+        self.time = Time()
+
+    def test_get(self):
+        self.assertEqual(self.time.get(timedelta(seconds=5)), 5)
+        self.assertEqual(self.time.get(timedelta(seconds=0)), 0)
+        self.assertEqual(self.time.get(timedelta(minutes=1)), 60)
+        self.assertEqual(self.time.get(timedelta(hours=1)), 3600)
+
+        with self.assertRaises(ValidationError):
+            self.time.get(-5)
+            self.time.get(timedelta(seconds=-5))
+            self.time.get(True)
+
+    
+
