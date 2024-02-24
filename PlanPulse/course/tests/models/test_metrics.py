@@ -11,9 +11,9 @@ class NumberTest(unittest.TestCase):
         self.number = Number()
 
     def test_get(self):
-        self.assertEqual(self.number.get(5.00), 5)
+        self.assertEqual(self.number.get(Decimal(5.00)), 5)
         with self.assertRaises(ValidationError):
-            self.number.get(-5.00)
+            self.number.get(Decimal(-5.00))
 
     def test_put(self):
         self.assertEqual(self.number.put(5), 5)
@@ -40,14 +40,14 @@ class TestBoolean(unittest.TestCase):
         self.boolean = Boolean()
 
     def test_get(self):
-        self.assertEqual(self.boolean.get(0), False)
-        self.assertEqual(self.boolean.get(1), True)
+        self.assertEqual(self.boolean.get(Decimal(0.00)), False)
+        self.assertEqual(self.boolean.get(Decimal(1.00)), True)
         with self.assertRaises(ValidationError):
-            self.boolean.get(2)
+            self.boolean.get(Decimal(5.00))
 
     def test_put(self):
-        self.assertEqual(self.boolean.put(False), 0)
-        self.assertEqual(self.boolean.put(True), 1)
+        self.assertEqual(self.boolean.put(False), Decimal(0.00))
+        self.assertEqual(self.boolean.put(True), Decimal(1.00))
 
     def test_add(self):
         with self.assertRaises(ValidationError):
