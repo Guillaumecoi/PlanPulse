@@ -44,3 +44,28 @@ class ProgressMetricsTest(TestCase):
             self.progress_metric_time.put(timedelta(seconds=-5))
             self.progress_metric_boolean.put(5)
             self.progress_metric_percentage.put(Decimal(-5.00))
+
+    def test_add_correct(self):
+        self.assertEqual(self.progress_metric_number.add(2, 3), 5)
+        self.assertEqual(self.progress_metric_time.add(timedelta(seconds=2), timedelta(seconds=3)), timedelta(seconds=5))
+        self.assertEqual(self.progress_metric_percentage.add(Decimal(2.00), Decimal(3.00)), Decimal(5.00))
+
+    def test_add_incorrect(self):
+        with self.assertRaises(ValidationError):
+            self.progress_metric_number.add(-2, 3)
+            self.progress_metric_time.add(timedelta(seconds=-2), timedelta(seconds=3))
+            self.progress_metric_boolean.add(True, False)
+            self.progress_metric_percentage.add(Decimal(-2.00), Decimal(3.00))
+
+    def test_subtract_correct(self):
+        self.assertEqual(self.progress_metric_number.subtract(5, 3), 2)
+        self.assertEqual(self.progress_metric_time.subtract(timedelta(seconds=5), timedelta(seconds=3)), timedelta(seconds=2))
+        self.assertEqual(self.progress_metric_percentage.subtract(Decimal(5.00), Decimal(3.00)), Decimal(2.00))
+
+    def test_subtract_incorrect(self):
+        with self.assertRaises(ValidationError):
+            self.progress_metric_number.subtract(-5, 3)
+            self.progress_metric_time.subtract(timedelta(seconds=-5), timedelta(seconds=3))
+            self.progress_metric_boolean.subtract(True, False)
+            self.progress_metric_percentage.subtract(Decimal(-5.00), Decimal(3.00))
+            
