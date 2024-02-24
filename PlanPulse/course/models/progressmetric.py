@@ -44,7 +44,6 @@ class ProgressMetrics(models.Model):
         '''
         return self.getMetric().put(value)
         
-
     def add(self, value1, value2):
         '''
         Adds the data to the metric
