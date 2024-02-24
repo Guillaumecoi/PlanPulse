@@ -109,6 +109,23 @@ class Percentage(Metric):
         self.isPercentage(value)
         return value
     
+    def put(self, value):
+        self.isPercentage(value)
+        return value
+    
+    def add(self, value1, value2):
+        self.isPercentage(value1)
+        self.isPercentage(value2)
+        if value1 + value2 > 100:
+            raise ValidationError('Invalid percentage value')
+        return value1 + value2
+
+    def subtract(self, value1, value2):
+        self.isPercentage(value1)
+        self.isPercentage(value2)
+        if value1 - value2 < 0:
+            raise ValidationError('Invalid percentage value')
+        return value1 - value2
 
 
     def isPercentage(self, value):
