@@ -86,6 +86,9 @@ class Time(Metric):
     
 
 class Boolean(Metric):
+    '''
+    Class that coverts between Decimal values and the appropriate boolean type
+    '''
     def get(self, value):
         if value == 0:
             return False
@@ -105,6 +108,9 @@ class Boolean(Metric):
     
 
 class Percentage(Metric):
+    '''
+    Class that coverts between Decimal values and the appropriate percentage type
+    '''
     def get(self, value):
         self.isPercentage(value)
         return value
@@ -127,12 +133,8 @@ class Percentage(Metric):
             raise ValidationError('Invalid percentage value')
         return value1 - value2
 
-
     def isPercentage(self, value):
         if not isinstance(value, Decimal):
             raise ValidationError('Invalid percentage value')
         if not 0 <= value <= 100:
             raise ValidationError('Invalid percentage value')
-    
-
-    
