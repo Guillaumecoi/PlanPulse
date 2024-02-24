@@ -65,6 +65,13 @@ class Time(Metric):
         self.isTimeDelta(value2)
         return value1 + value2
 
+    def subtract(self, value1, value2):
+        self.isTimeDelta(value1)
+        self.isTimeDelta(value2)
+        if value1 < value2:
+            raise ValidationError('Invalid time value: negative result')
+        return value1 - value2
+
     def isTimeDecimal(self, value):
         if not isinstance(value, Decimal):
             raise ValidationError('Invalid time value: not a decimal')
