@@ -56,10 +56,20 @@ class Time(Metric):
         self.isTimeDecimal(value)
         return timedelta(seconds=int(value))
 
+    def put(self, value):
+        self.isTimeDelta(value)
+        return Decimal(value.total_seconds())
+
     def isTimeDecimal(self, value):
         if not isinstance(value, Decimal):
             raise ValidationError('Invalid time value: not a decimal')
         if value < 0:
+            raise ValidationError('Invalid time value: negative')
+    
+    def isTimeDelta(self, value):
+        if not isinstance(value, timedelta):
+            raise ValidationError('Invalid time value: not a timedelta')
+        if value < timedelta(0):
             raise ValidationError('Invalid time value: negative')
     
 
