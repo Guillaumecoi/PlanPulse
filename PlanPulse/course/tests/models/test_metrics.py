@@ -2,6 +2,7 @@ import unittest
 
 from django.forms import ValidationError
 from datetime import timedelta
+from decimal import Decimal
 
 from course.models.metric import Number, Boolean, Time, Percentage
 
@@ -62,15 +63,17 @@ class TestTime(unittest.TestCase):
         self.time = Time()
 
     def test_get(self):
-        self.assertEqual(self.time.get(timedelta(seconds=5)), 5)
-        self.assertEqual(self.time.get(timedelta(seconds=0)), 0)
-        self.assertEqual(self.time.get(timedelta(minutes=1)), 60)
-        self.assertEqual(self.time.get(timedelta(hours=1)), 3600)
+        self.assertEqual(self.time.get(Decimal('5.00')), timedelta(seconds=5))
+        self.assertEqual(self.time.get(Decimal('0.00')), timedelta(seconds=0))
+        self.assertEqual(self.time.get(Decimal('60.00')), timedelta(minutes=1))
+        self.assertEqual(self.time.get(Decimal('3600.00')), timedelta(hours=1))
 
         with self.assertRaises(ValidationError):
+            self.time.get(Decimal('-5.00'))
             self.time.get(-5)
-            self.time.get(timedelta(seconds=-5))
             self.time.get(True)
+            
+
 
     
 
