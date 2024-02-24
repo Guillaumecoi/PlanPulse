@@ -4,19 +4,20 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.forms import ValidationError
 from .course import Course
+from .metric import Metric, Number, Time, Boolean, Percentage
 
 class ProgressMetrics(models.Model):
     '''
     Standard metrics for tracking progress in a course
     '''
-    Type_Choices = (
+    TYPE_CHOICES = (
         ('number', 'Number'),
         ('time', 'Time'),
         ('boolean', 'Boolean'),
         ('percentage', 'Percentage'),
     )
     name = models.CharField(max_length=255)
-    metric_type = models.Choices(Type_Choices)
+    metric_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
 
     def getMetric(self):
         '''
