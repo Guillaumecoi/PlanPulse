@@ -66,13 +66,14 @@ class CourseMetrics(models.Model):
     '''
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     metric = models.ForeignKey(ProgressMetrics, on_delete=models.CASCADE)
+    achievement_level = models.CharField(max_length=255, null=True, blank=True)
     metric_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     metric_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     weigth = models.IntegerField(default=1)
     time_estimate = models.DurationField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('course', 'metric')
+        unique_together = ('course', 'metric', 'achievement_level')
 
     def __str__(self):
         return f"{self.course.name} - {self.metric.name}"

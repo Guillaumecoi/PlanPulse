@@ -24,13 +24,32 @@ class CourseModelTest(TestCase):
         self.assertIsNotNone(self.course.date_completed)
 
     def test_add_metric(self):
-        self.course.add_metric('Test Metric', 'number', weigth=1, time_estimate=timedelta(hours=1))
-        metric = ProgressMetrics.objects.get(name='Test Metric', metric_type='number')
-        course_metric = CourseMetrics.objects.get(course=self.course, metric=metric)
-        self.assertEqual(course_metric.metric_value, 0)
-        self.assertEqual(course_metric.metric_max, 0)
-        self.assertEqual(course_metric.weigth, 1)
-        self.assertEqual(course_metric.time_estimate, timedelta(hours=1))
+        # Act
+        self.course.add_metric('Pages', 'number', achievement_level='Done' , weigth=1, time_estimate=timedelta(hours=1))
+        self.course.add_metric('Pages', 'number', achievement_level='Summarized', weigth=2, time_estimate=timedelta(hours=2))
+        metric = ProgressMetrics.objects.get(name='Pages', metric_type='number')
+        course_metric1 = CourseMetrics.objects.get(course=self.course, metric=metric, achievement_level='Done')
+        course_metric2 = CourseMetrics.objects.get(course=self.course, metric=metric, achievement_level='Summarized')
+
+        # Assert
+        self.assertEqual(metric.name, 'Pages')
+        self.assertEqual(metric.metric_type, 'number')
+
+        self.assertEqual(course_metric1.course, self.course)
+        self.assertEqual(course_metric1.metric, metric)
+        self.assertEqual(course_metric1.achievement_level, 'Done')
+        self.assertEqual(course_metric1.metric_value, 0)
+        self.assertEqual(course_metric1.metric_max, 0)
+        self.assertEqual(course_metric1.weigth, 1)
+        self.assertEqual(course_metric1.time_estimate, timedelta(hours=1))
+
+        self.assertEqual(course_metric2.course, self.course)
+        self.assertEqual(course_metric2.metric, metric)
+        self.assertEqual(course_metric2.achievement_level, 'Summarized')
+        self.assertEqual(course_metric2.metric_value, 0)
+        self.assertEqual(course_metric2.metric_max, 0)
+        self.assertEqual(course_metric2.weigth, 2)
+        self.assertEqual(course_metric2.time_estimate, timedelta(hours=2))
 
 
 class ChapterTestCase(TestCase):

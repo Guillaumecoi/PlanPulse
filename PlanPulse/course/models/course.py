@@ -40,14 +40,17 @@ class Course(Trackable):
         
     def has_access(self, user):
         return self.user == user
+    
+    def add_chapter(self, title, order=None, is_numbered=True):
+        return Chapter.objects.get_or_create(course=self, title=title, order=order, is_numbered=is_numbered)
 
-    def add_metric(self, metric_name, metric_type, weigth=None, time_estimate=None):
+    def add_metric(self, metric_name, metric_type, achievement_level=None, weigth=None, time_estimate=None):
         # To avoid circular import
         ProgressMetrics = importlib.import_module('course.models.progressmetric').ProgressMetrics
         CourseMetrics = importlib.import_module('course.models.progressmetric').CourseMetrics
         # Create the metric
         metric, created = ProgressMetrics.objects.get_or_create(name=metric_name, metric_type=metric_type)
-        CourseMetrics.objects.get_or_create(course=self, metric=metric, metric_value=0, metric_max=0, weigth=weigth, time_estimate=time_estimate)
+        return CourseMetrics.objects.get_or_create(course=self, metric=metric, achievement_level=achievement_level, metric_value=0, metric_max=0, weigth=weigth, time_estimate=time_estimate)
 
 
 class Chapter(Trackable):
@@ -123,3 +126,6 @@ class Chapter(Trackable):
 
         self.order = new_order
         self.save()
+
+    def add_subchapter(self, title, order=None, is_numbered=True):
+        return Chapter.objects.get_or_create(course=self.course, title=title, parent_chapter=self, order=order, is_numbered=is_numbered)
