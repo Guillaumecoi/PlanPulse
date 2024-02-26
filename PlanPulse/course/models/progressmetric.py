@@ -66,21 +66,35 @@ class CourseMetrics(models.Model):
     '''
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     metric = models.ForeignKey(ProgressMetrics, on_delete=models.CASCADE)
-    achievement_level = models.CharField(max_length=255, null=True, blank=True)
-    metric_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     metric_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    weigth = models.IntegerField(default=1)
-    time_estimate = models.DurationField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('course', 'metric', 'achievement_level')
+        unique_together = ('course', 'metric')
 
     def __str__(self):
         return f"{self.course.name} - {self.metric.name}"
     
     def save(self, *args, **kwargs):
-        self.course.modified()
         super().save(*args, **kwargs)
+        self.course.modified()
+
+
+class AchievementLevel(models.Model):
+    '''
+    Tracks different achievement levels within a course metric.
+    '''
+    course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE, related_name='achievement_levels')
+    achievement_level = models.CharField(max_length=255)
+    weight = models.PositiveIntegerField(default=1)
+    time_estimate = models.DurationField(null=True, blank=True)
+    value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        unique_together = ('course_metric', 'achievement_level')
+
+    def __str__(self):
+        return f"{self.course_metric} - {self.achievement_level}"
+
 
 
 class ProgressInstance(models.Model):
@@ -92,7 +106,6 @@ class ProgressInstance(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
 
     course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE)
-    metric_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     metric_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     class Meta:
@@ -109,6 +122,22 @@ class ProgressInstance(models.Model):
     def save(self, *args, **kwargs):
         # Adjust save method accordingly
         super().save(*args, **kwargs)
+
+
+class InstanceAchievement(models.Model):
+    '''
+    Tracks specific achievements or milestones within a progress instance.
+    '''
+    progress_instance = models.ForeignKey(ProgressInstance, on_delete=models.CASCADE, related_name='achievements')
+    achievement_level = models.CharField(max_length=255)
+    value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    achieved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('progress_instance', 'achievement_level')
+
+    def __str__(self):
+        return f"{self.progress_instance.content_object} - {self.achievement_level}"
 
 
 class StudySession(models.Model):
