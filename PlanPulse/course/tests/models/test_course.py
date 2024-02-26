@@ -1,7 +1,9 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.utils import timezone
+from datetime import timedelta
 from course.models.course import Course, Chapter
+from course.models.progressmetric import ProgressMetrics, CourseMetrics
 
 class CourseModelTest(TestCase):
     def setUp(self):
@@ -20,6 +22,15 @@ class CourseModelTest(TestCase):
     def test_complete_method(self):
         self.course.complete()
         self.assertIsNotNone(self.course.date_completed)
+
+    def test_add_metric(self):
+        self.course.add_metric('Test Metric', 'number', weigth=1, time_estimate=timedelta(hours=1))
+        metric = ProgressMetrics.objects.get(name='Test Metric', metric_type='number')
+        course_metric = CourseMetrics.objects.get(course=self.course, metric=metric)
+        self.assertEqual(course_metric.metric_value, 0)
+        self.assertEqual(course_metric.metric_max, 0)
+        self.assertEqual(course_metric.weigth, 1)
+        self.assertEqual(course_metric.time_estimate, timedelta(hours=1))
 
 
 class ChapterTestCase(TestCase):

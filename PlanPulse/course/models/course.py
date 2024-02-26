@@ -1,3 +1,4 @@
+import importlib
 from datetime import timedelta
 from django.utils import timezone
 from django.db import models
@@ -39,6 +40,14 @@ class Course(Trackable):
         
     def has_access(self, user):
         return self.user == user
+
+    def add_metric(self, metric_name, metric_type, weigth=None, time_estimate=None):
+        # To avoid circular import
+        ProgressMetrics = importlib.import_module('course.models.progressmetric').ProgressMetrics
+        CourseMetrics = importlib.import_module('course.models.progressmetric').CourseMetrics
+        # Create the metric
+        metric, created = ProgressMetrics.objects.get_or_create(name=metric_name, metric_type=metric_type)
+        CourseMetrics.objects.get_or_create(course=self, metric=metric, metric_value=0, metric_max=0, weigth=weigth, time_estimate=time_estimate)
 
 
 class Chapter(Trackable):
