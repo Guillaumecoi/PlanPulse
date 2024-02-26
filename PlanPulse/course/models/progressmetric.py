@@ -66,13 +66,13 @@ class CourseMetrics(models.Model):
     '''
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     metric = models.ForeignKey(ProgressMetrics, on_delete=models.CASCADE)
-    metric_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    metric_max = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         unique_together = ('course', 'metric')
 
     def __str__(self):
-        return f"{self.course.name} - {self.metric.name}"
+        return f"{self.course.title} - {self.metric.name}"
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -96,7 +96,6 @@ class AchievementLevel(models.Model):
         return f"{self.course_metric} {self.achievement_level}"
 
 
-
 class InstanceMetric(models.Model):
     '''
     Tracks the progress of a user in a specific instance (e.g., course, chapter) using a specific metric
@@ -106,21 +105,34 @@ class InstanceMetric(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
 
     course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE)
-    metric_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    metric_max = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         unique_together = ('content_type', 'object_id', 'course_metric')
 
     def __str__(self):
         # Adjust the string representation as needed
-        return f"{self.content_object} - {self.course_metric.metric.name}: {self.metric_value}"
+        return f"{self.content_object} - {self.course_metric.metric.name}: {self.metric_max}"
 
     def clean(self):
         # Your validation logic here, adjusted for the new structure
         pass
 
     def save(self, *args, **kwargs):
-        # Adjust save method accordingly
+        if self.metric_max is None:
+            self.metric_max = 0
+
+        # If this instance already exists, calculate the difference
+        if self.pk:
+            orig = InstanceMetric.objects.get(pk=self.pk)
+            diff = self.metric_max - orig.metric_max
+
+        else:
+            diff = self.metric_max
+
+        self.course_metric.metric_max += diff
+        self.course_metric.save()
+
         super().save(*args, **kwargs)
 
 
@@ -137,7 +149,7 @@ class InstanceAchievement(models.Model):
         unique_together = ('progress_instance', 'achievement_level')
 
     def __str__(self):
-        return f"{self.progress_instance.content_object} - {self.achievement_level}"
+        return f"{self.progress_instance.content_object} {self.achievement_level}"
 
 
 class StudySession(models.Model):
