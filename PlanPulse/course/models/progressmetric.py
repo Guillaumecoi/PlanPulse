@@ -93,11 +93,11 @@ class AchievementLevel(models.Model):
         unique_together = ('course_metric', 'achievement_level')
 
     def __str__(self):
-        return f"{self.course_metric} - {self.achievement_level}"
+        return f"{self.course_metric} {self.achievement_level}"
 
 
 
-class ProgressInstance(models.Model):
+class InstanceMetric(models.Model):
     '''
     Tracks the progress of a user in a specific instance (e.g., course, chapter) using a specific metric
     '''
@@ -113,7 +113,7 @@ class ProgressInstance(models.Model):
 
     def __str__(self):
         # Adjust the string representation as needed
-        return f"{self.content_object} progress - {self.course_metric.metric.name}: {self.metric_value}"
+        return f"{self.content_object} - {self.course_metric.metric.name}: {self.metric_value}"
 
     def clean(self):
         # Your validation logic here, adjusted for the new structure
@@ -128,7 +128,7 @@ class InstanceAchievement(models.Model):
     '''
     Tracks specific achievements or milestones within a progress instance.
     '''
-    progress_instance = models.ForeignKey(ProgressInstance, on_delete=models.CASCADE, related_name='achievements')
+    progress_instance = models.ForeignKey(InstanceMetric, on_delete=models.CASCADE, related_name='achievements')
     achievement_level = models.CharField(max_length=255)
     value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     achieved_at = models.DateTimeField(null=True, blank=True)
@@ -150,7 +150,7 @@ class StudySession(models.Model):
     time_spent = models.DurationField(null=True, blank=True)  # Automatically calculated or manually entered
 
     # Optional: if you want to directly link study sessions to progress instances
-    progress_instances = models.ManyToManyField(ProgressInstance, related_name='study_sessions', blank=True)
+    progress_instances = models.ManyToManyField(InstanceMetric, related_name='study_sessions', blank=True)
 
     def __str__(self):
         return f"Study Session for {self.user.username} on {self.start_time.strftime('%Y-%m-%d %H:%M')}"

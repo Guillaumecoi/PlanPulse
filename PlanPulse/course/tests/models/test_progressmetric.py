@@ -4,7 +4,7 @@ from django.forms import ValidationError
 from django.test import TestCase
 from datetime import timedelta
 from decimal import Decimal
-from course.models.progressmetric import ProgressMetrics, CourseMetrics, AchievementLevel, ProgressInstance, InstanceAchievement, StudySession
+from course.models.progressmetric import ProgressMetrics, CourseMetrics, AchievementLevel, InstanceMetric, InstanceAchievement, StudySession
 from course.models.metric import Number, Time, Boolean, Percentage
 from course.models.course import Course
 
@@ -90,6 +90,17 @@ class ProgressMetricsTest(TestCase):
             self.achievement_level = AchievementLevel(course_metric=self.course_metric, name='Done', description='The metric is done')
 
         def test_str(self):
-            self.assertEqual(str(self.course_metric), 'Test Course - Pages - Done')
+            self.assertEqual(str(self.course_metric), 'Test Course - Pages Done')
+
+    
+    class InstanceMetricTest(TestCase):
+        def setUp(self):
+            self.progress_metric = ProgressMetrics(name='Pages', metric_type='number')
+            self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
+            self.course_metric = CourseMetrics(course=self.course, metric=self.progress_metric, achievement_level='Done', weigth=1, time_estimate=timedelta(minutes=1))
+            self.progress_instance = InstanceMetric(course_metric=self.course_metric, value=10)
+
+        def test_str(self):
+            self.assertEqual(str(self.progress_instance), 'Test Course - Pages : 10')
 
         
