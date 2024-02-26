@@ -68,7 +68,7 @@ class CourseMetrics(models.Model):
     metric = models.ForeignKey(ProgressMetrics, on_delete=models.CASCADE)
     metric_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     metric_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    weigth = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    weigth = models.IntegerField(default=1)
     time_estimate = models.DurationField(null=True, blank=True)
 
     class Meta:
