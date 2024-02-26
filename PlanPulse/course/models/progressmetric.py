@@ -91,17 +91,16 @@ class ProgressInstance(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
-    user_course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE)
+    course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE)
     metric_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     metric_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    time_estimate = models.DurationField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('content_type', 'object_id', 'user_course_metric')
+        unique_together = ('content_type', 'object_id', 'course_metric')
 
     def __str__(self):
         # Adjust the string representation as needed
-        return f"{self.content_object} progress - {self.user_course_metric.metric.name}: {self.metric_value}"
+        return f"{self.content_object} progress - {self.course_metric.metric.name}: {self.metric_value}"
 
     def clean(self):
         # Your validation logic here, adjusted for the new structure
