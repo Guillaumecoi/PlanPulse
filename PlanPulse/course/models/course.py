@@ -29,10 +29,9 @@ class Course(Trackable):
     def __str__(self):
         return self.title
     
-    def save(self, *args, **kwargs):
-        if self.completed and not self.date_completed:
-            self.date_completed = timezone.now()
-        super().save(*args, **kwargs)
+    def complete(self):
+        self.date_completed = timezone.now()
+        self.save()
     
     def modified(self):
         self.date_modified = timezone.now()
@@ -73,6 +72,10 @@ class Chapter(Trackable):
         # Update the course's date_modified
         self.course.modified()
         super().save(*args, **kwargs)
+
+    def complete(self):
+        self.date_completed = timezone.now()
+        self.save()
 
     def delete(self, *args, **kwargs):
         # Decrement the order of chapters with a bigger order
