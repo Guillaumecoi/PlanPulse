@@ -1,7 +1,7 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.forms import ValidationError
 from .course import Course
@@ -76,9 +76,23 @@ class CourseMetrics(models.Model):
     def __str__(self):
         return f"{self.course.title} - {self.metric.name}"
     
+    def clean(self):
+        if self.metric_max != self.get_metric_max():
+            raise ValidationError("The maximum metric value cannot be less than the sum of the metric values of the progress instances")
+    
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         self.course.modified()
+
+    def update_metric_max(self, value):
+        '''
+        Sets the maximum metric value
+        '''
+        self.metric_max = self.get_metric_max()
+        self.save()
+
+    def get_metric_max(self):
+        return InstanceMetric.objects.filter(course_metric=self).aggregate(models.Sum('metric_max'))['metric_max__sum'] or 0
 
 
 class AchievementMetric(models.Model):
@@ -87,7 +101,7 @@ class AchievementMetric(models.Model):
     '''
     course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE, related_name='achievement_levels')
     achievement_level = models.CharField(max_length=255)
-    weight = models.PositiveIntegerField(default=1)
+    weight = models.PositiveIntegerField(default=1, validators=[MaxValueValidator(100)])
     time_estimate = models.DurationField(null=True, blank=True)
     value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
@@ -96,6 +110,10 @@ class AchievementMetric(models.Model):
 
     def __str__(self):
         return f"{self.course_metric} {self.achievement_level}"
+    
+    def clean(self):
+        if self.value > self.course_metric.metric_max:
+            raise ValidationError("The value cannot exceed the maximum metric value")
 
 
 class InstanceMetric(models.Model):
@@ -115,10 +133,6 @@ class InstanceMetric(models.Model):
     def __str__(self):
         # Adjust the string representation as needed
         return f"{self.content_object} - {self.course_metric.metric.name}: {self.metric_max}"
-
-    def clean(self):
-        # Your validation logic here, adjusted for the new structure
-        pass
 
     def save(self, *args, **kwargs):
         if self.metric_max is None:
@@ -156,9 +170,6 @@ class InstanceAchievement(models.Model):
     def clean(self):
         if self.value > self.progress_instance.metric_max:
             raise ValidationError("The value cannot exceed the maximum metric value")
-        
-        if self.value < 0:
-            raise ValidationError("The value cannot be negative")
         
         if self.progress_instance.course_metric != self.achievement_metric.course_metric:
             raise ValidationError("The achievement metric must belong to the same course metric as the progress instance")
@@ -231,6 +242,3 @@ class StudySession(models.Model):
         if self.end_time and self.start_time:
             if self.end_time < self.start_time:
                 raise ValidationError("The end time cannot be earlier than the start time")
-            
-
-    

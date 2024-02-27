@@ -80,12 +80,15 @@ class CourseMetricsTest(TestCase):
         self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
         self.course_metric = CourseMetrics(course=self.course, metric=self.progress_metric)
 
+        self.progress_metric.save()
+
     def test_str(self):
         self.assertEqual(str(self.course_metric), 'Test Course - Pages')
 
     def test_clean_negative_metric_max(self):
         self.course_metric.metric_max = -5
         with self.assertRaises(ValidationError):
+            self.course_metric.save()
             self.course_metric.full_clean()
 
 
@@ -104,6 +107,11 @@ class AchievementLevelTest(TestCase):
         with self.assertRaises(ValidationError):
             self.achievement_level.full_clean()
 
+    def test_clean_over_100_weight(self):
+        self.achievement_level.weight = 101
+        with self.assertRaises(ValidationError):
+            self.achievement_level.full_clean()
+
     def test_clean_negative_time_estimate(self):
         self.achievement_level.time_estimate = timedelta(minutes=-1)
         with self.assertRaises(ValidationError):
@@ -113,6 +121,11 @@ class AchievementLevelTest(TestCase):
         self.achievement_level.value = -5
         with self.assertRaises(ValidationError):
             self.achievement_level.full_clean()
+
+    def test_clean_value_exceeds_max(self):
+        self.achievement_level.value = 15
+        with self.assertRaises(ValidationError):
+            self.achievement_level.clean()
 
 class InstanceMetricTest(TestCase):
     def setUp(self):
