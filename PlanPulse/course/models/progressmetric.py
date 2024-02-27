@@ -6,6 +6,7 @@ from django.forms import ValidationError
 from .course import Course
 from .metric import Metric, Number, Time, Boolean, Percentage
 
+
 class ProgressMetrics(models.Model):
     '''
     Standard metrics for tracking progress in a course
@@ -195,7 +196,16 @@ class AchievementChange(models.Model):
             raise ValidationError("The user of the study session must be the same as the user of the course")
     
     def save(self, *args, **kwargs):
-        self.update_instance_achievement(self.value)
+        if self.value is None:
+            self.value = 0
+        # If this instance already exists, calculate the difference
+        if self.pk:
+            orig = InstanceAchievement.objects.get(pk=self.pk)
+            diff = self.value - orig.value
+        else:
+            diff = self.value
+
+        self.update_instance_achievement(diff)
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
