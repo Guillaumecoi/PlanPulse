@@ -160,7 +160,6 @@ class InstanceAchievement(models.Model):
         
         if self.progress_instance.course_metric != self.achievement_metric.course_metric:
             raise ValidationError("The achievement metric must belong to the same course metric as the progress instance")
-
     
     def save(self, *args, **kwargs):
         if self.value is None:
@@ -180,25 +179,47 @@ class InstanceAchievement(models.Model):
         super().save(*args, **kwargs)
 
 
-class StudySession(models.Model):
+class AchievementChange(models.Model):
     '''
-    Represents a study session, which can include progress on multiple instances (e.g., chapters, courses)
+    Tracks changes in the value of an achievement for a specific study session
     '''
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Assuming you have a User model
-    start_time = models.DateTimeField(auto_now_add=True)
-    end_time = models.DateTimeField(null=True, blank=True)
-    time_spent = models.DurationField(null=True, blank=True)  # Automatically calculated or manually entered
-
-    # Optional: if you want to directly link study sessions to progress instances
-    progress_instances = models.ManyToManyField(InstanceMetric, related_name='study_sessions', blank=True)
+    study_session = models.ForeignKey('StudySession', on_delete=models.CASCADE)
+    instance_achievement = models.ForeignKey('InstanceAchievement', on_delete=models.CASCADE)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
-        return f"Study Session for {self.user.username} on {self.start_time.strftime('%Y-%m-%d %H:%M')}"
-
+        return f"{self.instance_achievement} - {self.value}"
+    
+    def clean(self):
+        if self.study_session.user != self.instance_achievement.achievement_metric.course_metric.course.user:
+            raise ValidationError("The user of the study session must be the same as the user of the course")
+    
     def save(self, *args, **kwargs):
-        if self.end_time:
-            self.time_spent = self.end_time - self.start_time
+        self.update_instance_achievement(self.value)
         super().save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        self.update_instance_achievement(-self.value)
+        super().delete(*args, **kwargs)
+
+    def update_instance_achievement(self, value_change):
+        self.instance_achievement.value += value_change
+        self.instance_achievement.save()
+
+
+class StudySession(models.Model):
+    '''
+    Represents a study session, which can include progress on multiple instances/achievements
+    '''
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    start_time = models.DateTimeField(auto_now_add=True)
+    end_time = models.DateTimeField(null=True, blank=True)
+    time_spent = models.DurationField(null=True, blank=True)
+
+    def clean(self):
+        if self.end_time and self.start_time:
+            if self.end_time < self.start_time:
+                raise ValidationError("The end time cannot be earlier than the start time")
+            
 
     

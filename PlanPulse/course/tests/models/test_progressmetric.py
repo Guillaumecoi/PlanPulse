@@ -3,9 +3,10 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.forms import ValidationError
 from django.test import TestCase
+from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
-from course.models.progressmetric import ProgressMetrics, CourseMetrics, AchievementMetric, InstanceMetric, InstanceAchievement, StudySession
+from course.models.progressmetric import AchievementChange, ProgressMetrics, CourseMetrics, AchievementMetric, InstanceMetric, InstanceAchievement, StudySession
 from course.models.metric import Number, Time, Boolean, Percentage
 from course.models.course import Course, Chapter
 
@@ -247,3 +248,22 @@ class InstanceAchievementTest(TestCase):
         self.achievement.achievement_metric = achievement_metric2
         with self.assertRaises(ValidationError):
             self.achievement.clean()
+
+
+class AchievementChangeTest(TestCase):
+    def setUp(self):
+        self.progress_metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
+        self.user = User.objects.create_user(username='testuser', password='testpassword')
+        self.course = Course.objects.create(user=self.user, title='Test Course')
+        self.chapter = Chapter.objects.create(course=self.course, title='Test Chapter')
+        self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
+        self.content_type = ContentType.objects.get_for_model(self.chapter)
+        self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, metric_max=10)
+        self.achievement_metric = AchievementMetric.objects.create(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        self.achievement = InstanceAchievement.objects.create(progress_instance=self.progress_instance, achievement_metric=self.achievement_metric)
+
+        self.study_session = StudySession.objects.create(user=self.user, start_time=timezone.now(), end_time=timezone.now() + timedelta(minutes=30), time_spent=timedelta(minutes=30))
+        self.achievement_change = AchievementChange.objects.create(instance_achievement=self.achievement, study_session=self.study_session, value=5)  
+
+    def test_str(self):
+        self.assertEqual(str(self.achievement_change), 'Test Course - Test Chapter - 5/10 Pages Done - 5')
