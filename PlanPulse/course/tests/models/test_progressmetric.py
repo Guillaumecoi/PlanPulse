@@ -230,3 +230,20 @@ class InstanceAchievementTest(TestCase):
         initial_value = self.achievement_metric.value
         # Check if the value has been updated to 20
         self.assertEqual(initial_value, 20)
+
+    def test_clean_value_exceeds_max(self):
+        self.achievement.value = 15
+        with self.assertRaises(ValidationError):
+            self.achievement.clean()
+
+    def test_clean_value_negative(self):
+        self.achievement.value = -5
+        with self.assertRaises(ValidationError):
+            self.achievement.clean()
+
+    def test_clean_different_course_metric(self):
+        course_metric2 = CourseMetrics.objects.create(course=self.course, metric=ProgressMetrics.objects.create(name='Slides', metric_type='number'))
+        achievement_metric2 = AchievementMetric.objects.create(course_metric=course_metric2, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        self.achievement.achievement_metric = achievement_metric2
+        with self.assertRaises(ValidationError):
+            self.achievement.clean()
