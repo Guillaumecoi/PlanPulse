@@ -1,0 +1,46 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Django",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/PlanPulse/manage.py",
+            "args": [
+                "runserver"
+            ],
+            "django": true
+        },
+        {
+            "name": "Python: Django Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/PlanPulse/manage.py",
+            "args": [
+                "test",
+                "course.tests.test_progressmetric"
+            ],
+            "django": true
+        },
+        {
+            "name": "Python: Django Makemigrations",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/PlanPulse/manage.py",
+            "args": [
+                "makemigrations"
+            ],
+            "django": true
+        },
+        {
+            "name": "Python: Django Migrate",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/PlanPulse/manage.py",
+            "args": [
+                "migrate"
+            ],
+            "django": true
+        }
+    ]
+}

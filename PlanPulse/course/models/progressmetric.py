@@ -1,10 +1,13 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.forms import ValidationError
+from datetime import timedelta
 from .course import Course
 from .metric import Metric, Number, Time, Boolean, Percentage
+
 
 class ProgressMetrics(models.Model):
     '''
@@ -17,7 +20,7 @@ class ProgressMetrics(models.Model):
         ('percentage', 'Percentage'),
     )
     name = models.CharField(max_length=255)
-    metric_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    metric_type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='number', editable=False)
 
     def getMetric(self):
         '''
@@ -55,6 +58,15 @@ class ProgressMetrics(models.Model):
         Subtracts the data from the metric
         '''
         return self.getMetric().subtract(value1, value2)
+    
+    def sum(self, values):
+        '''
+        Sums the data
+        '''
+        result = 0
+        for value in values:
+            result = self.add(result, value)
+        return result
 
     def __str__(self):
         return self.name
@@ -66,22 +78,71 @@ class CourseMetrics(models.Model):
     '''
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     metric = models.ForeignKey(ProgressMetrics, on_delete=models.CASCADE)
-    metric_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    metric_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    time_estimate = models.DurationField(null=True, blank=True)
+    metric_max = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
     class Meta:
         unique_together = ('course', 'metric')
 
     def __str__(self):
-        return f"{self.course.name} - {self.metric.name}"
+        return f"{self.course.title} - {self.metric.name}"
+    
+    def clean(self):
+        if self.metric_max != self.get_metric_max():
+            raise ValidationError("The maximum metric value cannot be less than the sum of the metric values of the progress instances")
     
     def save(self, *args, **kwargs):
-        self.course.modified()
         super().save(*args, **kwargs)
+        self.course.modified()
+
+    def update_metric_max(self):
+        self.metric_max = self.get_metric_max()
+        self.save()
+
+    def get_metric_max(self):
+        instances = list(InstanceMetric.objects.filter(course_metric=self).values_list('metric_max', flat=True))
+        return self.metric.sum(instances)
 
 
-class ProgressInstance(models.Model):
+class AchievementMetric(models.Model):
+    '''
+    Tracks different achievement levels within a course metric.
+    '''
+    course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE, related_name='achievement_levels')
+    achievement_level = models.CharField(max_length=255)
+    weight = models.PositiveIntegerField(default=1, validators=[MaxValueValidator(100)])
+    time_estimate = models.DurationField(null=True, blank=True)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+
+    class Meta:
+        unique_together = ('course_metric', 'achievement_level')
+
+    def __str__(self):
+        return f"{self.course_metric} {self.achievement_level}"
+    
+    def clean(self):
+        if self.value > self.course_metric.metric_max:
+            raise ValidationError("The value cannot exceed the maximum metric value")
+        
+        if self.value != self.get_value():
+            raise ValidationError("The value cannot be less than the sum of the values of the instance achievements")
+        
+        if self.time_estimate:
+            if self.time_estimate < timedelta(0):
+                raise ValidationError("The time estimate cannot be negative")
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.course_metric.course.modified()
+        
+    def update_value(self):
+        self.value = self.get_value()
+        self.save()
+
+    def get_value(self):
+        return InstanceAchievement.objects.filter(achievement_metric=self).aggregate(models.Sum('value'))['value__sum'] or 0
+
+
+class InstanceMetric(models.Model):
     '''
     Tracks the progress of a user in a specific instance (e.g., course, chapter) using a specific metric
     '''
@@ -89,46 +150,94 @@ class ProgressInstance(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
-    user_course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE)
-    metric_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    metric_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    time_estimate = models.DurationField(null=True, blank=True)
+    course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE)
+    metric_max = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
     class Meta:
-        unique_together = ('content_type', 'object_id', 'user_course_metric')
-
-    def __str__(self):
-        # Adjust the string representation as needed
-        return f"{self.content_object} progress - {self.user_course_metric.metric.name}: {self.metric_value}"
-
-    def clean(self):
-        # Your validation logic here, adjusted for the new structure
-        pass
+        unique_together = ('content_type', 'object_id', 'course_metric')
 
     def save(self, *args, **kwargs):
-        # Adjust save method accordingly
+        if self.metric_max is None:
+            self.metric_max = 0
         super().save(*args, **kwargs)
+        self.course_metric.update_metric_max()
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        self.course_metric.update_metric_max()
+
+
+class InstanceAchievement(models.Model):
+    '''
+    Tracks specific achievements or milestones within a progress instance.
+    '''
+    progress_instance = models.ForeignKey(InstanceMetric, on_delete=models.CASCADE, related_name='achievements')
+    achievement_metric = models.ForeignKey(AchievementMetric, on_delete=models.CASCADE)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    achieved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('progress_instance', 'achievement_metric')
+
+    def clean(self):
+        if self.value > self.progress_instance.metric_max:
+            raise ValidationError("The value cannot exceed the maximum metric value")
+        
+        if self.progress_instance.course_metric != self.achievement_metric.course_metric:
+            raise ValidationError("The achievement metric must belong to the same course metric as the progress instance")
+    
+    def save(self, *args, **kwargs):
+        if self.value is None:
+            self.value = 0
+        super().save(*args, **kwargs)
+        self.achievement_metric.update_value()
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        self.achievement_metric.update_value()
+
+    def update_value(self):
+        values = list(AchievementChange.objects.filter(instance_achievement=self).values_list('value', flat=True))
+        self.value = self.get_metric().sum(values)
+        self.save()
+
+    def get_metric(self):
+        return self.progress_instance.course_metric.metric
+
+
+class AchievementChange(models.Model):
+    '''
+    Tracks changes in the value of an achievement for a specific study session
+    '''
+    study_session = models.ForeignKey('StudySession', on_delete=models.CASCADE)
+    instance_achievement = models.ForeignKey('InstanceAchievement', on_delete=models.CASCADE)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    
+    def clean(self):
+        if self.study_session.user != self.instance_achievement.achievement_metric.course_metric.course.user:
+            raise ValidationError("The user of the study session must be the same as the user of the course")
+    
+    def save(self, *args, **kwargs):
+        if self.value is None:
+            self.value = 0
+        super().save(*args, **kwargs)
+        self.instance_achievement.update_value()
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        self.instance_achievement.update_value()
 
 
 class StudySession(models.Model):
     '''
-    Represents a study session, which can include progress on multiple instances (e.g., chapters, courses)
+    Represents a study session, which can include progress on multiple instances/achievements
     '''
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Assuming you have a User model
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(null=True, blank=True)
-    time_spent = models.DurationField(null=True, blank=True)  # Automatically calculated or manually entered
+    time_spent = models.DurationField(null=True, blank=True)
 
-    # Optional: if you want to directly link study sessions to progress instances
-    progress_instances = models.ManyToManyField(ProgressInstance, related_name='study_sessions', blank=True)
-
-    def __str__(self):
-        return f"Study Session for {self.user.username} on {self.start_time.strftime('%Y-%m-%d %H:%M')}"
-
-    def save(self, *args, **kwargs):
-        if self.end_time:
-            self.time_spent = self.end_time - self.start_time
-        super().save(*args, **kwargs)
-
-
-    
+    def clean(self):
+        if self.end_time and self.start_time:
+            if self.end_time < self.start_time:
+                raise ValidationError("The end time cannot be earlier than the start time")
