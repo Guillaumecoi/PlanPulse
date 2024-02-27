@@ -5,7 +5,7 @@ from django.forms import ValidationError
 from django.test import TestCase
 from datetime import timedelta
 from decimal import Decimal
-from course.models.progressmetric import ProgressMetrics, CourseMetrics, AchievementLevel, InstanceMetric, InstanceAchievement, StudySession
+from course.models.progressmetric import ProgressMetrics, CourseMetrics, AchievementMetric, InstanceMetric, InstanceAchievement, StudySession
 from course.models.metric import Number, Time, Boolean, Percentage
 from course.models.course import Course, Chapter
 
@@ -88,7 +88,7 @@ class AchievementLevelTest(TestCase):
         self.progress_metric = ProgressMetrics(name='Pages', metric_type='number')
         self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
         self.course_metric = CourseMetrics(course=self.course, metric=self.progress_metric)
-        self.achievement_level = AchievementLevel(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        self.achievement_level = AchievementMetric(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
 
     def test_str(self):
         self.assertEqual(str(self.achievement_level), 'Test Course - Pages Done')
@@ -173,7 +173,31 @@ class InstanceAchievementTest(TestCase):
         self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
         self.content_type = ContentType.objects.get_for_model(self.chapter)
         self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, metric_max=10)
-        self.achievement = InstanceAchievement.objects.create(progress_instance=self.progress_instance, achievement_level='Done', value=5, achieved_at=None)
+        self.achievement_metric = AchievementMetric.objects.create(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        self.achievement = InstanceAchievement.objects.create(progress_instance=self.progress_instance, achievement_metric=self.achievement_metric, value=5, achieved_at=None)
 
     def test_str(self):
         self.assertEqual(str(self.achievement), 'Test Course - Test Chapter - 5/10 Pages Done')
+
+    def test_achievement_metric_update(self):
+        # Save the initial value of achievement_metric
+        self.achievement_metric.refresh_from_db()
+        initial_value = self.achievement_metric.value
+        # Check if the value has been updated to 5
+        self.assertEqual(initial_value, 5)
+
+        # Increase the value of achievement and save it
+        self.achievement.value += 5
+        self.achievement.save()
+
+        # Reload achievement_metric from the database
+        self.achievement_metric.refresh_from_db()
+
+        # Check if achievement_metric.value has been increased by the same amount
+        self.assertEqual(self.achievement_metric.value, 10)
+
+        self.achievement.value -= 5
+        self.achievement.save()
+        self.achievement_metric.refresh_from_db()
+
+        self.assertEqual(self.achievement_metric.value, 5)
