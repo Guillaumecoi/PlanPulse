@@ -1,6 +1,7 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.forms import ValidationError
 from .course import Course
@@ -18,7 +19,7 @@ class ProgressMetrics(models.Model):
         ('percentage', 'Percentage'),
     )
     name = models.CharField(max_length=255)
-    metric_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    metric_type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='number', editable=False)
 
     def getMetric(self):
         '''
@@ -67,7 +68,7 @@ class CourseMetrics(models.Model):
     '''
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     metric = models.ForeignKey(ProgressMetrics, on_delete=models.CASCADE)
-    metric_max = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    metric_max = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
     class Meta:
         unique_together = ('course', 'metric')
@@ -88,7 +89,7 @@ class AchievementMetric(models.Model):
     achievement_level = models.CharField(max_length=255)
     weight = models.PositiveIntegerField(default=1)
     time_estimate = models.DurationField(null=True, blank=True)
-    value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
     class Meta:
         unique_together = ('course_metric', 'achievement_level')
@@ -106,7 +107,7 @@ class InstanceMetric(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
 
     course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE)
-    metric_max = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    metric_max = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
     class Meta:
         unique_together = ('content_type', 'object_id', 'course_metric')
@@ -143,7 +144,7 @@ class InstanceAchievement(models.Model):
     '''
     progress_instance = models.ForeignKey(InstanceMetric, on_delete=models.CASCADE, related_name='achievements')
     achievement_metric = models.ForeignKey(AchievementMetric, on_delete=models.CASCADE)
-    value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
     achieved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -186,7 +187,7 @@ class AchievementChange(models.Model):
     '''
     study_session = models.ForeignKey('StudySession', on_delete=models.CASCADE)
     instance_achievement = models.ForeignKey('InstanceAchievement', on_delete=models.CASCADE)
-    value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
     def __str__(self):
         return f"{self.instance_achievement} - {self.value}"
