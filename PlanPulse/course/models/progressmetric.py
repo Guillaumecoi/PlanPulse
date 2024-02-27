@@ -87,7 +87,7 @@ class AchievementMetric(models.Model):
     achievement_level = models.CharField(max_length=255)
     weight = models.PositiveIntegerField(default=1)
     time_estimate = models.DurationField(null=True, blank=True)
-    value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         unique_together = ('course_metric', 'achievement_level')
@@ -142,7 +142,7 @@ class InstanceAchievement(models.Model):
     '''
     progress_instance = models.ForeignKey(InstanceMetric, on_delete=models.CASCADE, related_name='achievements')
     achievement_metric = models.ForeignKey(AchievementMetric, on_delete=models.CASCADE)
-    value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     achieved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -151,7 +151,22 @@ class InstanceAchievement(models.Model):
     def __str__(self):
         return f"{self.progress_instance.content_object} - {self.value}/{self.progress_instance.metric_max} {self.progress_instance.course_metric.metric} {self.achievement_metric.achievement_level}"
     
+    def save(self, *args, **kwargs):
+        if self.value is None:
+            self.value = 0
 
+        # If this instance already exists, calculate the difference
+        if self.pk:
+            orig = InstanceAchievement.objects.get(pk=self.pk)
+            diff = self.value - orig.value
+
+        else:
+            diff = self.value
+
+        self.achievement_metric.value += diff
+        self.achievement_metric.save()
+
+        super().save(*args, **kwargs)
 
 
 class StudySession(models.Model):
