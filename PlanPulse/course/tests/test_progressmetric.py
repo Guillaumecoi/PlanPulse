@@ -83,6 +83,11 @@ class CourseMetricsTest(TestCase):
     def test_str(self):
         self.assertEqual(str(self.course_metric), 'Test Course - Pages')
 
+    def test_clean_negative_metric_max(self):
+        self.course_metric.metric_max = -5
+        with self.assertRaises(ValidationError):
+            self.course_metric.full_clean()
+
 
 class AchievementLevelTest(TestCase):
     def setUp(self):
@@ -93,6 +98,21 @@ class AchievementLevelTest(TestCase):
 
     def test_str(self):
         self.assertEqual(str(self.achievement_level), 'Test Course - Pages Done')
+
+    def test_clean_negative_weight(self):
+        self.achievement_level.weight = -5
+        with self.assertRaises(ValidationError):
+            self.achievement_level.full_clean()
+
+    def test_clean_negative_time_estimate(self):
+        self.achievement_level.time_estimate = timedelta(minutes=-1)
+        with self.assertRaises(ValidationError):
+            self.achievement_level.full_clean()
+
+    def test_clean_negative_value(self):
+        self.achievement_level.value = -5
+        with self.assertRaises(ValidationError):
+            self.achievement_level.full_clean()
 
 class InstanceMetricTest(TestCase):
     def setUp(self):
@@ -105,6 +125,11 @@ class InstanceMetricTest(TestCase):
     
     def test_str(self):
         self.assertEqual(str(self.progress_instance), 'Test Course - Test Chapter - Pages: 10')
+
+    def test_clean_negative_metric_max(self):
+        self.progress_instance.metric_max = -5
+        with self.assertRaises(ValidationError):
+            self.progress_instance.full_clean()
 
     def test_metric_max_update(self):
         # Save the initial metric_max of course_metric
@@ -180,6 +205,23 @@ class InstanceAchievementTest(TestCase):
     def test_str(self):
         self.assertEqual(str(self.achievement), 'Test Course - Test Chapter - 5/10 Pages Done')
 
+    def test_clean_value_exceeds_max(self):
+        self.achievement.value = 15
+        with self.assertRaises(ValidationError):
+            self.achievement.clean()
+
+    def test_clean_value_negative(self):
+        self.achievement.value = -5
+        with self.assertRaises(ValidationError):
+            self.achievement.full_clean()
+
+    def test_clean_different_course_metric(self):
+        course_metric2 = CourseMetrics.objects.create(course=self.course, metric=ProgressMetrics.objects.create(name='Slides', metric_type='number'))
+        achievement_metric2 = AchievementMetric.objects.create(course_metric=course_metric2, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        self.achievement.achievement_metric = achievement_metric2
+        with self.assertRaises(ValidationError):
+            self.achievement.clean()
+
     def test_achievement_metric_update(self):
         # Save the initial value of achievement_metric
         self.achievement_metric.refresh_from_db()
@@ -232,23 +274,6 @@ class InstanceAchievementTest(TestCase):
         # Check if the value has been updated to 20
         self.assertEqual(initial_value, 20)
 
-    def test_clean_value_exceeds_max(self):
-        self.achievement.value = 15
-        with self.assertRaises(ValidationError):
-            self.achievement.clean()
-
-    def test_clean_value_negative(self):
-        self.achievement.value = -5
-        with self.assertRaises(ValidationError):
-            self.achievement.clean()
-
-    def test_clean_different_course_metric(self):
-        course_metric2 = CourseMetrics.objects.create(course=self.course, metric=ProgressMetrics.objects.create(name='Slides', metric_type='number'))
-        achievement_metric2 = AchievementMetric.objects.create(course_metric=course_metric2, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
-        self.achievement.achievement_metric = achievement_metric2
-        with self.assertRaises(ValidationError):
-            self.achievement.clean()
-
 
 class AchievementChangeTest(TestCase):
     def setUp(self):
@@ -267,6 +292,17 @@ class AchievementChangeTest(TestCase):
 
     def test_str(self):
         self.assertEqual(str(self.achievement_change), 'Test Course - Test Chapter - 5/10 Pages Done - 5')
+
+    def test_clean_negative_value(self):
+        self.achievement_change.value = -5
+        with self.assertRaises(ValidationError):
+            self.achievement_change.full_clean()
+
+    def test_clean_different_user(self):
+        user2 = User.objects.create_user(username='testuser2', password='testpassword')
+        self.study_session.user = user2
+        with self.assertRaises(ValidationError):
+            self.achievement_change.clean()
 
     def test_update_achievement(self):
         # The value grows
@@ -291,11 +327,5 @@ class AchievementChangeTest(TestCase):
         self.achievement_change.delete()
         self.achievement.refresh_from_db()
         self.assertEqual(self.achievement.value, 0)
-
-    def test_clean_different_user(self):
-        user2 = User.objects.create_user(username='testuser2', password='testpassword')
-        self.study_session.user = user2
-        with self.assertRaises(ValidationError):
-            self.achievement_change.clean()
 
     
