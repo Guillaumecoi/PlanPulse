@@ -201,3 +201,32 @@ class InstanceAchievementTest(TestCase):
         self.achievement_metric.refresh_from_db()
 
         self.assertEqual(self.achievement_metric.value, 5)
+
+    def test_achievement_metric_update_with_none(self):
+        # Save the initial value of achievement_metric
+        self.achievement_metric.refresh_from_db()
+        initial_value = self.achievement_metric.value
+        # Check if the value has been updated to 5
+        self.assertEqual(initial_value, 5)
+
+        # Increase the value of achievement and save it
+        self.achievement.value = None
+        self.achievement.save()
+
+        # Reload achievement_metric from the database
+        self.achievement_metric.refresh_from_db()
+
+        # Check if achievement_metric.value has been increased by the same amount
+        self.assertEqual(self.achievement_metric.value, 0)
+
+    def test_achievement_metric_with_multiple_achievements(self):
+        # create a second progress_instance
+        chapter2 = Chapter.objects.create(course=self.course, title='Test Chapter 2')
+        content_type2 = ContentType.objects.get_for_model(chapter2)
+        progress_instance2 = InstanceMetric.objects.create(content_type=content_type2, object_id=chapter2.id, course_metric=self.course_metric, metric_max=20)
+        achievement2 = InstanceAchievement.objects.create(progress_instance=progress_instance2, achievement_metric=self.achievement_metric, value=15, achieved_at=None)
+
+        self.achievement_metric.refresh_from_db()
+        initial_value = self.achievement_metric.value
+        # Check if the value has been updated to 20
+        self.assertEqual(initial_value, 20)
