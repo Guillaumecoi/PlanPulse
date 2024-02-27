@@ -79,7 +79,7 @@ class CourseMetrics(models.Model):
         self.course.modified()
 
 
-class AchievementLevel(models.Model):
+class AchievementMetric(models.Model):
     '''
     Tracks different achievement levels within a course metric.
     '''
@@ -141,15 +141,17 @@ class InstanceAchievement(models.Model):
     Tracks specific achievements or milestones within a progress instance.
     '''
     progress_instance = models.ForeignKey(InstanceMetric, on_delete=models.CASCADE, related_name='achievements')
-    achievement_level = models.CharField(max_length=255)
+    achievement_metric = models.ForeignKey(AchievementMetric, on_delete=models.CASCADE)
     value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     achieved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('progress_instance', 'achievement_level')
+        unique_together = ('progress_instance', 'achievement_metric')
 
     def __str__(self):
-        return f"{self.progress_instance.content_object} - {self.value}/{self.progress_instance.metric_max} {self.progress_instance.course_metric.metric} {self.achievement_level}"
+        return f"{self.progress_instance.content_object} - {self.value}/{self.progress_instance.metric_max} {self.progress_instance.course_metric.metric} {self.achievement_metric.achievement_level}"
+    
+
 
 
 class StudySession(models.Model):
