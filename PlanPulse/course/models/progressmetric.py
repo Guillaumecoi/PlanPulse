@@ -149,7 +149,7 @@ class InstanceAchievement(models.Model):
         unique_together = ('progress_instance', 'achievement_level')
 
     def __str__(self):
-        return f"{self.progress_instance.content_object} {self.achievement_level}"
+        return f"{self.progress_instance.content_object} - {self.value}/{self.progress_instance.metric_max} {self.progress_instance.course_metric.metric} {self.achievement_level}"
 
 
 class StudySession(models.Model):

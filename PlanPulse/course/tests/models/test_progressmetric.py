@@ -164,3 +164,16 @@ class InstanceMetricTest(TestCase):
 
         self.course_metric.refresh_from_db()
         self.assertEqual(self.course_metric.metric_max, 35)
+
+class InstanceAchievementTest(TestCase):
+    def setUp(self):
+        self.progress_metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
+        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
+        self.chapter = Chapter.objects.create(course=self.course, title='Test Chapter')
+        self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
+        self.content_type = ContentType.objects.get_for_model(self.chapter)
+        self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, metric_max=10)
+        self.achievement = InstanceAchievement.objects.create(progress_instance=self.progress_instance, achievement_level='Done', value=5, achieved_at=None)
+
+    def test_str(self):
+        self.assertEqual(str(self.achievement), 'Test Course - Test Chapter - 5/10 Pages Done')
