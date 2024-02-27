@@ -151,6 +151,17 @@ class InstanceAchievement(models.Model):
     def __str__(self):
         return f"{self.progress_instance.content_object} - {self.value}/{self.progress_instance.metric_max} {self.progress_instance.course_metric.metric} {self.achievement_metric.achievement_level}"
     
+    def clean(self):
+        if self.value > self.progress_instance.metric_max:
+            raise ValidationError("The value cannot exceed the maximum metric value")
+        
+        if self.value < 0:
+            raise ValidationError("The value cannot be negative")
+        
+        if self.progress_instance.course_metric != self.achievement_metric.course_metric:
+            raise ValidationError("The achievement metric must belong to the same course metric as the progress instance")
+
+    
     def save(self, *args, **kwargs):
         if self.value is None:
             self.value = 0
