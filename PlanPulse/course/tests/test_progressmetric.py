@@ -267,3 +267,35 @@ class AchievementChangeTest(TestCase):
 
     def test_str(self):
         self.assertEqual(str(self.achievement_change), 'Test Course - Test Chapter - 5/10 Pages Done - 5')
+
+    def test_update_achievement(self):
+        # The value grows
+        self.achievement_change.value = 10
+        self.achievement_change.save()
+        self.achievement.refresh_from_db()
+        self.assertEqual(self.achievement.value, 10)
+
+        # The value decreases
+        self.achievement_change.value = 3
+        self.achievement_change.save()
+        self.achievement.refresh_from_db()
+        self.assertEqual(self.achievement.value, 3)
+
+        # The value becomes None
+        self.achievement_change.value = None
+        self.achievement_change.save()
+        self.achievement.refresh_from_db()
+        self.assertEqual(self.achievement.value, 0)
+
+    def test_delete(self):
+        self.achievement_change.delete()
+        self.achievement.refresh_from_db()
+        self.assertEqual(self.achievement.value, 0)
+
+    def test_clean_different_user(self):
+        user2 = User.objects.create_user(username='testuser2', password='testpassword')
+        self.study_session.user = user2
+        with self.assertRaises(ValidationError):
+            self.achievement_change.clean()
+
+    
