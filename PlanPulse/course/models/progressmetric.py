@@ -58,6 +58,15 @@ class ProgressMetrics(models.Model):
         Subtracts the data from the metric
         '''
         return self.getMetric().subtract(value1, value2)
+    
+    def sum(self, values):
+        '''
+        Sums the data
+        '''
+        result = 0
+        for value in values:
+            result = self.add(result, value)
+        return result
 
     def __str__(self):
         return self.name
@@ -85,15 +94,13 @@ class CourseMetrics(models.Model):
         super().save(*args, **kwargs)
         self.course.modified()
 
-    def update_metric_max(self, value):
-        '''
-        Sets the maximum metric value
-        '''
+    def update_metric_max(self):
         self.metric_max = self.get_metric_max()
         self.save()
 
     def get_metric_max(self):
-        return InstanceMetric.objects.filter(course_metric=self).aggregate(models.Sum('metric_max'))['metric_max__sum'] or 0
+        instances = list(InstanceMetric.objects.filter(course_metric=self).values_list('metric_max', flat=True))
+        return self.metric.sum(instances)
 
 
 class AchievementMetric(models.Model):
@@ -149,26 +156,15 @@ class InstanceMetric(models.Model):
     class Meta:
         unique_together = ('content_type', 'object_id', 'course_metric')
 
-    def __str__(self):
-        # Adjust the string representation as needed
-        return f"{self.content_object} - {self.course_metric.metric.name}: {self.metric_max}"
-
     def save(self, *args, **kwargs):
         if self.metric_max is None:
             self.metric_max = 0
-
-        # If this instance already exists, calculate the difference
-        if self.pk:
-            orig = InstanceMetric.objects.get(pk=self.pk)
-            diff = self.metric_max - orig.metric_max
-
-        else:
-            diff = self.metric_max
-
-        self.course_metric.metric_max += diff
-        self.course_metric.save()
-
         super().save(*args, **kwargs)
+        self.course_metric.update_metric_max()
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        self.course_metric.update_metric_max()
 
 
 class InstanceAchievement(models.Model):
@@ -183,9 +179,6 @@ class InstanceAchievement(models.Model):
     class Meta:
         unique_together = ('progress_instance', 'achievement_metric')
 
-    def __str__(self):
-        return f"{self.progress_instance.content_object} - {self.value}/{self.progress_instance.metric_max} {self.progress_instance.course_metric.metric} {self.achievement_metric.achievement_level}"
-    
     def clean(self):
         if self.value > self.progress_instance.metric_max:
             raise ValidationError("The value cannot exceed the maximum metric value")
@@ -196,19 +189,20 @@ class InstanceAchievement(models.Model):
     def save(self, *args, **kwargs):
         if self.value is None:
             self.value = 0
-
-        # If this instance already exists, calculate the difference
-        if self.pk:
-            orig = InstanceAchievement.objects.get(pk=self.pk)
-            diff = self.value - orig.value
-
-        else:
-            diff = self.value
-
-        self.achievement_metric.value += diff
-        self.achievement_metric.save()
-
         super().save(*args, **kwargs)
+        self.achievement_metric.update_value()
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        self.achievement_metric.update_value()
+
+    def update_value(self):
+        values = list(AchievementChange.objects.filter(instance_achievement=self).values_list('value', flat=True))
+        self.value = self.get_metric().sum(values)
+        self.save()
+
+    def get_metric(self):
+        return self.progress_instance.course_metric.metric
 
 
 class AchievementChange(models.Model):
@@ -218,9 +212,6 @@ class AchievementChange(models.Model):
     study_session = models.ForeignKey('StudySession', on_delete=models.CASCADE)
     instance_achievement = models.ForeignKey('InstanceAchievement', on_delete=models.CASCADE)
     value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
-
-    def __str__(self):
-        return f"{self.instance_achievement} - {self.value}"
     
     def clean(self):
         if self.study_session.user != self.instance_achievement.achievement_metric.course_metric.course.user:
@@ -229,23 +220,12 @@ class AchievementChange(models.Model):
     def save(self, *args, **kwargs):
         if self.value is None:
             self.value = 0
-        # If this instance already exists, calculate the difference
-        if self.pk:
-            orig = InstanceAchievement.objects.get(pk=self.pk)
-            diff = self.value - orig.value
-        else:
-            diff = self.value
-
-        self.update_instance_achievement(diff)
         super().save(*args, **kwargs)
+        self.instance_achievement.update_value()
 
     def delete(self, *args, **kwargs):
-        self.update_instance_achievement(-self.value)
         super().delete(*args, **kwargs)
-
-    def update_instance_achievement(self, value_change):
-        self.instance_achievement.value += value_change
-        self.instance_achievement.save()
+        self.instance_achievement.update_value()
 
 
 class StudySession(models.Model):

@@ -1,4 +1,3 @@
-import unittest
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.forms import ValidationError
@@ -133,9 +132,6 @@ class InstanceMetricTest(TestCase):
         self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
         self.content_type = ContentType.objects.get_for_model(self.chapter)
         self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, metric_max=10)
-    
-    def test_str(self):
-        self.assertEqual(str(self.progress_instance), 'Test Course - Test Chapter - Pages: 10')
 
     def test_clean_negative_metric_max(self):
         self.progress_instance.metric_max = -5
@@ -152,34 +148,18 @@ class InstanceMetricTest(TestCase):
         # Increase the metric_max of progress_instance and save it
         self.progress_instance.metric_max += 10
         self.progress_instance.save()
-
-        # Reload course_metric from the database
         self.course_metric.refresh_from_db()
-
-        # Check if course_metric.metric_max has been increased by the same amount
         self.assertEqual(self.course_metric.metric_max, 20)
 
         self.progress_instance.metric_max -= 15
         self.progress_instance.save()
         self.course_metric.refresh_from_db()
-
         self.assertEqual(self.course_metric.metric_max, 5)
-
-    def test_metric_max_update_with_none(self):
-        # Save the initial metric_max of course_metric
-        self.course_metric.refresh_from_db()
-        initial_metric_max = self.course_metric.metric_max
-        # Check if the metric_max has been updated to 10
-        self.assertEqual(initial_metric_max, 10)
 
         # Increase the metric_max of progress_instance and save it
         self.progress_instance.metric_max = None
         self.progress_instance.save()
-
-        # Reload course_metric from the database
         self.course_metric.refresh_from_db()
-
-        # Check if course_metric.metric_max has been increased by the same amount
         self.assertEqual(self.course_metric.metric_max, 0)
 
     def test_metric_max_update_with_multiple_instances(self):
@@ -190,7 +170,6 @@ class InstanceMetricTest(TestCase):
 
         self.course_metric.refresh_from_db()
         initial_metric_max = self.course_metric.metric_max
-        # Check if the metric_max has been updated to 10
         self.assertEqual(initial_metric_max, 30)
 
         # Change the metric_max of both progress_instances and save it
@@ -198,9 +177,13 @@ class InstanceMetricTest(TestCase):
         progress_instance2.metric_max -= 5
         self.progress_instance.save()
         progress_instance2.save()
-
         self.course_metric.refresh_from_db()
         self.assertEqual(self.course_metric.metric_max, 35)
+
+    def test_delete(self):
+        self.progress_instance.delete()
+        self.course_metric.refresh_from_db()
+        self.assertEqual(self.course_metric.metric_max, 0)
 
 class InstanceAchievementTest(TestCase):
     def setUp(self):
@@ -212,9 +195,6 @@ class InstanceAchievementTest(TestCase):
         self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, metric_max=10)
         self.achievement_metric = AchievementMetric.objects.create(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
         self.achievement = InstanceAchievement.objects.create(progress_instance=self.progress_instance, achievement_metric=self.achievement_metric, value=5, achieved_at=None)
-
-    def test_str(self):
-        self.assertEqual(str(self.achievement), 'Test Course - Test Chapter - 5/10 Pages Done')
 
     def test_clean_value_exceeds_max(self):
         self.achievement.value = 15
@@ -237,40 +217,24 @@ class InstanceAchievementTest(TestCase):
         # Save the initial value of achievement_metric
         self.achievement_metric.refresh_from_db()
         initial_value = self.achievement_metric.value
-        # Check if the value has been updated to 5
         self.assertEqual(initial_value, 5)
 
         # Increase the value of achievement and save it
         self.achievement.value += 5
         self.achievement.save()
-
-        # Reload achievement_metric from the database
         self.achievement_metric.refresh_from_db()
-
-        # Check if achievement_metric.value has been increased by the same amount
         self.assertEqual(self.achievement_metric.value, 10)
 
+        # Decrease the value of achievement and save it
         self.achievement.value -= 5
         self.achievement.save()
         self.achievement_metric.refresh_from_db()
-
         self.assertEqual(self.achievement_metric.value, 5)
 
-    def test_achievement_metric_update_with_none(self):
-        # Save the initial value of achievement_metric
-        self.achievement_metric.refresh_from_db()
-        initial_value = self.achievement_metric.value
-        # Check if the value has been updated to 5
-        self.assertEqual(initial_value, 5)
-
-        # Increase the value of achievement and save it
+        # Set the value of achievement to None and save it
         self.achievement.value = None
         self.achievement.save()
-
-        # Reload achievement_metric from the database
         self.achievement_metric.refresh_from_db()
-
-        # Check if achievement_metric.value has been increased by the same amount
         self.assertEqual(self.achievement_metric.value, 0)
 
     def test_achievement_metric_with_multiple_achievements(self):
@@ -282,8 +246,20 @@ class InstanceAchievementTest(TestCase):
 
         self.achievement_metric.refresh_from_db()
         initial_value = self.achievement_metric.value
-        # Check if the value has been updated to 20
         self.assertEqual(initial_value, 20)
+
+        # Change the value of both achievements and save it
+        self.achievement.value += 5
+        achievement2.value -= 10
+        self.achievement.save()
+        achievement2.save()
+        self.achievement_metric.refresh_from_db()
+        self.assertEqual(self.achievement_metric.value, 15)
+
+    def test_delete(self):
+        self.achievement.delete()
+        self.achievement_metric.refresh_from_db()
+        self.assertEqual(self.achievement_metric.value, 0)
 
 
 class AchievementChangeTest(TestCase):
@@ -300,9 +276,6 @@ class AchievementChangeTest(TestCase):
 
         self.study_session = StudySession.objects.create(user=self.user, start_time=timezone.now(), end_time=timezone.now() + timedelta(minutes=30), time_spent=timedelta(minutes=30))
         self.achievement_change = AchievementChange.objects.create(instance_achievement=self.achievement, study_session=self.study_session, value=5)  
-
-    def test_str(self):
-        self.assertEqual(str(self.achievement_change), 'Test Course - Test Chapter - 5/10 Pages Done - 5')
 
     def test_clean_negative_value(self):
         self.achievement_change.value = -5
