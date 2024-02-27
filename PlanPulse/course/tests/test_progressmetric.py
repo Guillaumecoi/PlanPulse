@@ -76,11 +76,9 @@ class ProgressMetricsTest(TestCase):
 
 class CourseMetricsTest(TestCase):
     def setUp(self):
-        self.progress_metric = ProgressMetrics(name='Pages', metric_type='number')
+        self.progress_metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
         self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
-        self.course_metric = CourseMetrics(course=self.course, metric=self.progress_metric)
-
-        self.progress_metric.save()
+        self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
 
     def test_str(self):
         self.assertEqual(str(self.course_metric), 'Test Course - Pages')
@@ -92,12 +90,12 @@ class CourseMetricsTest(TestCase):
             self.course_metric.full_clean()
 
 
-class AchievementLevelTest(TestCase):
+class AchievementMetricTest(TestCase):
     def setUp(self):
-        self.progress_metric = ProgressMetrics(name='Pages', metric_type='number')
+        self.progress_metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
         self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
-        self.course_metric = CourseMetrics(course=self.course, metric=self.progress_metric)
-        self.achievement_level = AchievementMetric(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
+        self.achievement_level = AchievementMetric.objects.create(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
 
     def test_str(self):
         self.assertEqual(str(self.achievement_level), 'Test Course - Pages Done')

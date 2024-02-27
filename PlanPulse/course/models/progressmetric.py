@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.forms import ValidationError
+from datetime import timedelta
 from .course import Course
 from .metric import Metric, Number, Time, Boolean, Percentage
 
@@ -114,6 +115,24 @@ class AchievementMetric(models.Model):
     def clean(self):
         if self.value > self.course_metric.metric_max:
             raise ValidationError("The value cannot exceed the maximum metric value")
+        
+        if self.value != self.get_value():
+            raise ValidationError("The value cannot be less than the sum of the values of the instance achievements")
+        
+        if self.time_estimate:
+            if self.time_estimate < timedelta(0):
+                raise ValidationError("The time estimate cannot be negative")
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.course_metric.course.modified()
+        
+    def update_value(self):
+        self.value = self.get_value()
+        self.save()
+
+    def get_value(self):
+        return InstanceAchievement.objects.filter(achievement_metric=self).aggregate(models.Sum('value'))['value__sum'] or 0
 
 
 class InstanceMetric(models.Model):
