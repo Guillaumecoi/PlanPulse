@@ -25,10 +25,10 @@ class CourseMetrics(models.Model):
     metric_type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='number', editable=False)
 
     class Meta:
-        unique_together = ('course', 'metric')
+        unique_together = ('course', 'name')
 
     def __str__(self):
-        return f"{self.course.title} - {self.metric.name}"
+        return f"{self.course.title} - {self.name}"
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -46,6 +46,12 @@ class CourseMetrics(models.Model):
         }.get(self.metric_type, Metric)  # Fallback to the base Metric class, which raises NotImplementedError
     
         return metric_class()
+    
+    def getTotal(self):
+        '''
+        Returns the total value of the metric
+        '''
+        return InstanceMetric.objects.filter(course_metric=self).aggregate(models.Sum('value'))['value__sum'] or 0
     
     def add_achievement_metric(self, achievement_level, weight, time_estimate=None, value=0):
         '''
@@ -70,10 +76,7 @@ class AchievementMetric(models.Model):
     def __str__(self):
         return f"{self.course_metric} {self.achievement_level}"
     
-    def clean(self):
-        if self.value > self.course_metric.metric_max:
-            raise ValidationError("The value cannot exceed the maximum metric value")
-        
+    def clean(self):      
         if self.value != self.get_value():
             raise ValidationError("The value cannot be less than the sum of the values of the instance achievements")
         
@@ -90,6 +93,7 @@ class AchievementMetric(models.Model):
         self.save()
 
     def get_value(self):
+        #TODO control based on the metric type
         return InstanceAchievement.objects.filter(achievement_metric=self).aggregate(models.Sum('value'))['value__sum'] or 0
 
 
@@ -102,20 +106,15 @@ class InstanceMetric(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
 
     course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE)
-    metric_max = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
     class Meta:
         unique_together = ('content_type', 'object_id', 'course_metric')
 
     def save(self, *args, **kwargs):
-        if self.metric_max is None:
-            self.metric_max = 0
+        if self.value is None:
+            self.value = 0
         super().save(*args, **kwargs)
-        self.course_metric.update_metric_max()
-
-    def delete(self, *args, **kwargs):
-        super().delete(*args, **kwargs)
-        self.course_metric.update_metric_max()
 
 
 class InstanceAchievement(models.Model):
@@ -131,7 +130,7 @@ class InstanceAchievement(models.Model):
         unique_together = ('progress_instance', 'achievement_metric')
 
     def clean(self):
-        if self.value > self.progress_instance.metric_max:
+        if self.value > self.progress_instance.value:
             raise ValidationError("The value cannot exceed the maximum metric value")
         
         if self.progress_instance.course_metric != self.achievement_metric.course_metric:
@@ -149,11 +148,11 @@ class InstanceAchievement(models.Model):
 
     def update_value(self):
         values = list(AchievementChange.objects.filter(instance_achievement=self).values_list('value', flat=True))
-        self.value = self.get_metric().sum(values)
+        self.value = values  #TODO control based on the metric type
         self.save()
 
     def get_metric(self):
-        return self.progress_instance.course_metric.metric
+        return self.progress_instance.course_metric.getMetric()
 
 
 class AchievementChange(models.Model):
