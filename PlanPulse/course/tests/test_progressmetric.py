@@ -70,27 +70,20 @@ class InstanceMetricTest(TestCase):
             self.progress_instance.full_clean()
 
     def test_value_update(self):
-        # Save the initial value of course_metric
-        self.course_metric.refresh_from_db()
-        initial_value = self.course_metric.get_total()
-        # Check if the value has been updated to 10
-        self.assertEqual(initial_value, 10)
+        self.assertEqual(self.course_metric.get_total(), 10)
 
         # Increase the value of progress_instance and save it
         self.progress_instance.value += 10
         self.progress_instance.save()
-        self.course_metric.refresh_from_db()
         self.assertEqual(self.course_metric.get_total(), 20)
 
         self.progress_instance.value -= 15
         self.progress_instance.save()
-        self.course_metric.refresh_from_db()
         self.assertEqual(self.course_metric.get_total(), 5)
 
         # Increase the value of progress_instance and save it
         self.progress_instance.value = None
         self.progress_instance.save()
-        self.course_metric.refresh_from_db()
         self.assertEqual(self.course_metric.get_total(), 0)
 
     def test_value_update_with_multiple_instances(self):
@@ -99,7 +92,6 @@ class InstanceMetricTest(TestCase):
         content_type2 = ContentType.objects.get_for_model(chapter2)
         progress_instance2 = InstanceMetric.objects.create(content_type=content_type2, object_id=chapter2.id, course_metric=self.course_metric, value=20)
 
-        self.course_metric.refresh_from_db()
         initial_value = self.course_metric.get_total()
         self.assertEqual(initial_value, 30)
 
@@ -108,12 +100,10 @@ class InstanceMetricTest(TestCase):
         progress_instance2.value -= 5
         self.progress_instance.save()
         progress_instance2.save()
-        self.course_metric.refresh_from_db()
         self.assertEqual(self.course_metric.get_total(), 35)
 
     def test_delete(self):
         self.progress_instance.delete()
-        self.course_metric.refresh_from_db()
         self.assertEqual(self.course_metric.get_total(), 0)
 
 class InstanceAchievementTest(TestCase):
@@ -145,26 +135,22 @@ class InstanceAchievementTest(TestCase):
 
     def test_achievement_metric_update(self):
         # Save the initial value of achievement_metric
-        self.achievement_metric.refresh_from_db()
         initial_value = self.achievement_metric.get_total()
         self.assertEqual(initial_value, 5)
 
         # Increase the value of achievement and save it
         self.achievement.value += 5
         self.achievement.save()
-        self.achievement_metric.refresh_from_db()
         self.assertEqual(self.achievement_metric.get_total(), 10)
 
         # Decrease the value of achievement and save it
         self.achievement.value -= 5
         self.achievement.save()
-        self.achievement_metric.refresh_from_db()
         self.assertEqual(self.achievement_metric.get_total(), 5)
 
         # Set the value of achievement to None and save it
         self.achievement.value = None
         self.achievement.save()
-        self.achievement_metric.refresh_from_db()
         self.assertEqual(self.achievement_metric.get_total(), 0)
 
     def test_achievement_metric_with_multiple_achievements(self):
@@ -174,7 +160,6 @@ class InstanceAchievementTest(TestCase):
         progress_instance2 = InstanceMetric.objects.create(content_type=content_type2, object_id=chapter2.id, course_metric=self.course_metric, value=20)
         achievement2 = InstanceAchievement.objects.create(progress_instance=progress_instance2, achievement_metric=self.achievement_metric, value=15, achieved_at=None)
 
-        self.achievement_metric.refresh_from_db()
         initial_value = self.achievement_metric.get_total()
         self.assertEqual(initial_value, 20)
 
@@ -183,11 +168,9 @@ class InstanceAchievementTest(TestCase):
         achievement2.value -= 10
         self.achievement.save()
         achievement2.save()
-        self.achievement_metric.refresh_from_db()
         self.assertEqual(self.achievement_metric.get_total(), 15)
 
     def test_delete(self):
         self.achievement.delete()
-        self.achievement_metric.refresh_from_db()
         self.assertEqual(self.achievement_metric.get_total(), 0)
     
