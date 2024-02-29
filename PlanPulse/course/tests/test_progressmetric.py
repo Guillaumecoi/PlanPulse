@@ -4,7 +4,7 @@ from django.forms import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 from datetime import timedelta
-from course.models.progressmetric import CourseMetrics, AchievementMetric, InstanceMetric, InstanceAchievement
+from course.models.progressmetric import CourseMetrics, AchievementMetric, InstanceMetric, Achievements
 from course.models.metric import Number, Time, Boolean, Percentage
 from course.models.course import Course, Chapter
 
@@ -114,7 +114,7 @@ class InstanceAchievementTest(TestCase):
         self.content_type = ContentType.objects.get_for_model(self.chapter)
         self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, value=10)
         self.achievement_metric = AchievementMetric.objects.create(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
-        self.achievement = InstanceAchievement.objects.create(progress_instance=self.progress_instance, achievement_metric=self.achievement_metric, value=5, achieved_at=None)
+        self.achievement = Achievements.objects.create(progress_instance=self.progress_instance, achievement_metric=self.achievement_metric, value=5)
 
     def test_clean_value_exceeds_max(self):
         self.achievement.value = 15
@@ -158,7 +158,7 @@ class InstanceAchievementTest(TestCase):
         chapter2 = Chapter.objects.create(course=self.course, name='Test Chapter 2')
         content_type2 = ContentType.objects.get_for_model(chapter2)
         progress_instance2 = InstanceMetric.objects.create(content_type=content_type2, object_id=chapter2.id, course_metric=self.course_metric, value=20)
-        achievement2 = InstanceAchievement.objects.create(progress_instance=progress_instance2, achievement_metric=self.achievement_metric, value=15, achieved_at=None)
+        achievement2 = Achievements.objects.create(progress_instance=progress_instance2, achievement_metric=self.achievement_metric, value=15)
 
         initial_value = self.achievement_metric.get_total()
         self.assertEqual(initial_value, 20)

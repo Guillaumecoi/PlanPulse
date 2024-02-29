@@ -82,7 +82,7 @@ class AchievementMetric(models.Model):
 
     def get_total(self):
         #TODO control based on the metric type
-        return InstanceAchievement.objects.filter(achievement_metric=self).aggregate(models.Sum('value'))['value__sum'] or 0
+        return Achievements.objects.filter(achievement_metric=self).aggregate(models.Sum('value'))['value__sum'] or 0
 
 
 class InstanceMetric(models.Model):
@@ -111,17 +111,17 @@ class InstanceMetric(models.Model):
         super().save(*args, **kwargs)
 
 
-class InstanceAchievement(models.Model):
+class Achievements(models.Model):
     '''
     Tracks specific achievements or milestones within a progress instance.
     '''
     progress_instance = models.ForeignKey(InstanceMetric, on_delete=models.CASCADE, related_name='achievements')
     achievement_metric = models.ForeignKey(AchievementMetric, on_delete=models.CASCADE)
+    study_session = models.ForeignKey('StudySession', on_delete=models.CASCADE, null=True, blank=True)
     value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
-    achieved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('progress_instance', 'achievement_metric')
+        unique_together = ('progress_instance', 'achievement_metric', 'study_session')
 
     def clean(self):
         if self.value > self.progress_instance.value:
@@ -129,42 +129,18 @@ class InstanceAchievement(models.Model):
         
         if self.progress_instance.course_metric != self.achievement_metric.course_metric:
             raise ValidationError("The achievement metric must belong to the same course metric as the progress instance")
+        
+        if self.study_session:
+            if self.study_session.user != self.progress_instance.course_metric.course.user:
+                raise ValidationError("The study session must belong to the same user as the progress instance")
     
     def save(self, *args, **kwargs):
         if self.value is None:
             self.value = 0
         super().save(*args, **kwargs)
-
-    def update_value(self):
-        values = list(AchievementChange.objects.filter(instance_achievement=self).values_list('value', flat=True))
-        self.value = values  #TODO control based on the metric type
-        self.save()
 
     def get_metric(self):
         return self.progress_instance.course_metric.getMetric()
-
-
-class AchievementChange(models.Model):
-    '''
-    Tracks changes in the value of an achievement for a specific study session
-    '''
-    study_session = models.ForeignKey('StudySession', on_delete=models.CASCADE)
-    instance_achievement = models.ForeignKey('InstanceAchievement', on_delete=models.CASCADE)
-    value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
-    
-    def clean(self):
-        if self.study_session.user != self.instance_achievement.achievement_metric.course_metric.course.user:
-            raise ValidationError("The user of the study session must be the same as the user of the course")
-    
-    def save(self, *args, **kwargs):
-        if self.value is None:
-            self.value = 0
-        super().save(*args, **kwargs)
-        self.instance_achievement.update_value()
-
-    def delete(self, *args, **kwargs):
-        super().delete(*args, **kwargs)
-        self.instance_achievement.update_value()
 
 
 class StudySession(models.Model):
