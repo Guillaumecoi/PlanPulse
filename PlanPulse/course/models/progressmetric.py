@@ -9,9 +9,9 @@ from .course import Course
 from .metric import Metric, Number, Time, Boolean, Percentage
 
 
-class ProgressMetrics(models.Model):
+class CourseMetrics(models.Model):
     '''
-    Standard metrics for tracking progress in a course
+    Tracks the progress of a user in a course using a specific metric
     '''
     TYPE_CHOICES = (
         ('number', 'Number'),
@@ -19,8 +19,20 @@ class ProgressMetrics(models.Model):
         ('boolean', 'Boolean'),
         ('percentage', 'Percentage'),
     )
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     metric_type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='number', editable=False)
+
+    class Meta:
+        unique_together = ('course', 'metric')
+
+    def __str__(self):
+        return f"{self.course.title} - {self.metric.name}"
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.course.modified()
 
     def getMetric(self):
         '''
@@ -34,73 +46,12 @@ class ProgressMetrics(models.Model):
         }.get(self.metric_type, Metric)  # Fallback to the base Metric class, which raises NotImplementedError
     
         return metric_class()
-
-    def get(self, value):
-        '''
-        Gets the data for the metric
-        '''
-        return self.getMetric().get(value)
-
-    def put(self, value):
-        '''
-        Puts the data for the metric
-        '''
-        return self.getMetric().put(value)
-        
-    def add(self, value1, value2):
-        '''
-        Adds the data to the metric
-        '''
-        return self.getMetric().add(value1, value2)
     
-    def subtract(self, value1, value2):
+    def add_achievement_metric(self, achievement_level, weight, time_estimate=None, value=0):
         '''
-        Subtracts the data from the metric
+        Adds a new achievement metric to the course metric
         '''
-        return self.getMetric().subtract(value1, value2)
-    
-    def sum(self, values):
-        '''
-        Sums the data
-        '''
-        result = 0
-        for value in values:
-            result = self.add(result, value)
-        return result
-
-    def __str__(self):
-        return self.name
-
-
-class CourseMetrics(models.Model):
-    '''
-    Tracks the progress of a user in a course using a specific metric
-    '''
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    metric = models.ForeignKey(ProgressMetrics, on_delete=models.CASCADE)
-    metric_max = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
-
-    class Meta:
-        unique_together = ('course', 'metric')
-
-    def __str__(self):
-        return f"{self.course.title} - {self.metric.name}"
-    
-    def clean(self):
-        if self.metric_max != self.get_metric_max():
-            raise ValidationError("The maximum metric value cannot be less than the sum of the metric values of the progress instances")
-    
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        self.course.modified()
-
-    def update_metric_max(self):
-        self.metric_max = self.get_metric_max()
-        self.save()
-
-    def get_metric_max(self):
-        instances = list(InstanceMetric.objects.filter(course_metric=self).values_list('metric_max', flat=True))
-        return self.metric.sum(instances)
+        return AchievementMetric.objects.create(course_metric=self, achievement_level=achievement_level, weight=weight, time_estimate=time_estimate)
 
 
 class AchievementMetric(models.Model):
