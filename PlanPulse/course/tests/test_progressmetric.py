@@ -4,89 +4,31 @@ from django.forms import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 from datetime import timedelta
-from decimal import Decimal
-from course.models.progressmetric import AchievementChange, ProgressMetrics, CourseMetrics, AchievementMetric, InstanceMetric, InstanceAchievement, StudySession
+from course.models.progressmetric import AchievementChange, CourseMetrics, AchievementMetric, InstanceMetric, InstanceAchievement, StudySession
 from course.models.metric import Number, Time, Boolean, Percentage
 from course.models.course import Course, Chapter
 
-class ProgressMetricsTest(TestCase):
-    def setUp(self):
-        self.progress_metric_number = ProgressMetrics(name='Test Metric', metric_type='number')
-        self.progress_metric_time = ProgressMetrics(name='Test Metric', metric_type='time')
-        self.progress_metric_boolean = ProgressMetrics(name='Test Metric', metric_type='boolean')
-        self.progress_metric_percentage = ProgressMetrics(name='Test Metric', metric_type='percentage')
-
-    def test_getMetric(self):
-        self.assertIsInstance(self.progress_metric_number.getMetric(), Number)
-        self.assertIsInstance(self.progress_metric_time.getMetric(), Time)
-        self.assertIsInstance(self.progress_metric_boolean.getMetric(), Boolean)
-        self.assertIsInstance(self.progress_metric_percentage.getMetric(), Percentage)
-
-    def test_get_correct(self):
-        self.assertEqual(self.progress_metric_number.get(Decimal(5.00)), 5)
-        self.assertEqual(self.progress_metric_time.get(Decimal(5.00)), timedelta(seconds=5))
-        self.assertEqual(self.progress_metric_boolean.get(1), True)
-        self.assertEqual(self.progress_metric_percentage.get(Decimal(5.00)), Decimal(5.00))
-
-    def test_get_incorrect(self):
-        with self.assertRaises(ValidationError):
-            self.progress_metric_number.get(Decimal(-5.00))
-            self.progress_metric_time.get(Decimal(-5.00))
-            self.progress_metric_boolean.get(5)
-            self.progress_metric_percentage.get(Decimal(-5.00))
-
-    def test_put_correct(self):
-        self.assertEqual(self.progress_metric_number.put(5), 5)
-        self.assertEqual(self.progress_metric_time.put(timedelta(seconds=5)), Decimal(5.00))
-        self.assertEqual(self.progress_metric_boolean.put(True), 1)
-        self.assertEqual(self.progress_metric_percentage.put(Decimal(5.00)), Decimal(5.00))
-
-    def test_put_incorrect(self):
-        with self.assertRaises(ValidationError):
-            self.progress_metric_number.put(-5)
-            self.progress_metric_time.put(timedelta(seconds=-5))
-            self.progress_metric_boolean.put(5)
-            self.progress_metric_percentage.put(Decimal(-5.00))
-
-    def test_add_correct(self):
-        self.assertEqual(self.progress_metric_number.add(2, 3), 5)
-        self.assertEqual(self.progress_metric_time.add(timedelta(seconds=2), timedelta(seconds=3)), timedelta(seconds=5))
-        self.assertEqual(self.progress_metric_percentage.add(Decimal(2.00), Decimal(3.00)), Decimal(5.00))
-
-    def test_add_incorrect(self):
-        with self.assertRaises(ValidationError):
-            self.progress_metric_number.add(-2, 3)
-            self.progress_metric_time.add(timedelta(seconds=-2), timedelta(seconds=3))
-            self.progress_metric_boolean.add(True, False)
-            self.progress_metric_percentage.add(Decimal(-2.00), Decimal(3.00))
-
-    def test_subtract_correct(self):
-        self.assertEqual(self.progress_metric_number.subtract(5, 3), 2)
-        self.assertEqual(self.progress_metric_time.subtract(timedelta(seconds=5), timedelta(seconds=3)), timedelta(seconds=2))
-        self.assertEqual(self.progress_metric_percentage.subtract(Decimal(5.00), Decimal(3.00)), Decimal(2.00))
-
-    def test_subtract_incorrect(self):
-        with self.assertRaises(ValidationError):
-            self.progress_metric_number.subtract(-5, 3)
-            self.progress_metric_time.subtract(timedelta(seconds=-5), timedelta(seconds=3))
-            self.progress_metric_boolean.subtract(True, False)
-            self.progress_metric_percentage.subtract(Decimal(-5.00), Decimal(3.00))
-            
-
+          
 class CourseMetricsTest(TestCase):
     def setUp(self):
-        self.progress_metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
         self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
-        self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
+        self.course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
 
     def test_str(self):
         self.assertEqual(str(self.course_metric), 'Test Course - Pages')
 
-    def test_clean_negative_metric_max(self):
-        self.course_metric.metric_max = -5
-        with self.assertRaises(ValidationError):
-            self.course_metric.save()
-            self.course_metric.full_clean()
+    def test_getMetric(self):
+        # Arrange
+        number_metric = CourseMetrics.objects.create(course=self.course, name='number', metric_type='number')
+        time_metric = CourseMetrics.objects.create(course=self.course, name='time', metric_type='time')
+        boolean_metric = CourseMetrics.objects.create(course=self.course, name='boolean', metric_type='boolean')
+        percentage_metric = CourseMetrics.objects.create(course=self.course, name='percentage', metric_type='percentage')
+
+        # Act & Assert
+        self.assertIsInstance(number_metric.getMetric(), Number)
+        self.assertIsInstance(time_metric.getMetric(), Time)
+        self.assertIsInstance(boolean_metric.getMetric(), Boolean)
+        self.assertIsInstance(percentage_metric.getMetric(), Percentage)
 
 
 class AchievementMetricTest(TestCase):
@@ -134,7 +76,7 @@ class InstanceMetricTest(TestCase):
         self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, metric_max=10)
 
     def test_clean_negative_metric_max(self):
-        self.progress_instance.metric_max = -5
+        self.progress_instance.value = -5
         with self.assertRaises(ValidationError):
             self.progress_instance.full_clean()
 
@@ -146,18 +88,18 @@ class InstanceMetricTest(TestCase):
         self.assertEqual(initial_metric_max, 10)
 
         # Increase the metric_max of progress_instance and save it
-        self.progress_instance.metric_max += 10
+        self.progress_instance.value += 10
         self.progress_instance.save()
         self.course_metric.refresh_from_db()
         self.assertEqual(self.course_metric.metric_max, 20)
 
-        self.progress_instance.metric_max -= 15
+        self.progress_instance.value -= 15
         self.progress_instance.save()
         self.course_metric.refresh_from_db()
         self.assertEqual(self.course_metric.metric_max, 5)
 
         # Increase the metric_max of progress_instance and save it
-        self.progress_instance.metric_max = None
+        self.progress_instance.value = None
         self.progress_instance.save()
         self.course_metric.refresh_from_db()
         self.assertEqual(self.course_metric.metric_max, 0)
@@ -173,8 +115,8 @@ class InstanceMetricTest(TestCase):
         self.assertEqual(initial_metric_max, 30)
 
         # Change the metric_max of both progress_instances and save it
-        self.progress_instance.metric_max += 10
-        progress_instance2.metric_max -= 5
+        self.progress_instance.value += 10
+        progress_instance2.value -= 5
         self.progress_instance.save()
         progress_instance2.save()
         self.course_metric.refresh_from_db()
