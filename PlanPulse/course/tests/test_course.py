@@ -1,14 +1,11 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
-from django.utils import timezone
-from datetime import timedelta
 from course.models.course import Course, Chapter
-from course.models.progressmetric import ProgressMetrics, CourseMetrics
 
 class CourseModelTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='testuser', password='testpassword')
-        self.course = Course.objects.create(user=self.user, title='Test Course')
+        self.course = Course.objects.create(user=self.user, name='Test Course')
 
     def test_modified_method(self):
         old_modified_date = self.course.date_modified
@@ -23,40 +20,12 @@ class CourseModelTest(TestCase):
         self.course.complete()
         self.assertIsNotNone(self.course.date_completed)
 
-    def test_add_metric(self):
-        # Act
-        self.course.add_metric('Pages', 'number', achievement_level='Done' , weigth=1, time_estimate=timedelta(hours=1))
-        self.course.add_metric('Pages', 'number', achievement_level='Summarized', weigth=2, time_estimate=timedelta(hours=2))
-        metric = ProgressMetrics.objects.get(name='Pages', metric_type='number')
-        course_metric1 = CourseMetrics.objects.get(course=self.course, metric=metric, achievement_level='Done')
-        course_metric2 = CourseMetrics.objects.get(course=self.course, metric=metric, achievement_level='Summarized')
-
-        # Assert
-        self.assertEqual(metric.name, 'Pages')
-        self.assertEqual(metric.metric_type, 'number')
-
-        self.assertEqual(course_metric1.course, self.course)
-        self.assertEqual(course_metric1.metric, metric)
-        self.assertEqual(course_metric1.achievement_level, 'Done')
-        self.assertEqual(course_metric1.metric_value, 0)
-        self.assertEqual(course_metric1.metric_max, 0)
-        self.assertEqual(course_metric1.weigth, 1)
-        self.assertEqual(course_metric1.time_estimate, timedelta(hours=1))
-
-        self.assertEqual(course_metric2.course, self.course)
-        self.assertEqual(course_metric2.metric, metric)
-        self.assertEqual(course_metric2.achievement_level, 'Summarized')
-        self.assertEqual(course_metric2.metric_value, 0)
-        self.assertEqual(course_metric2.metric_max, 0)
-        self.assertEqual(course_metric2.weigth, 2)
-        self.assertEqual(course_metric2.time_estimate, timedelta(hours=2))
-
 
 class ChapterTestCase(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='testuser', password='testpassword')
-        self.course = Course.objects.create(user=self.user, title='Test Course')
-        self.chapter = Chapter.objects.create(title='Test Chapter', course=self.course)
+        self.course = Course.objects.create(user=self.user, name='Test Course')
+        self.chapter = Chapter.objects.create(name='Test Chapter', course=self.course)
 
     def test_complete(self):
         # make sure the chapter is not completed
@@ -70,12 +39,12 @@ class ChapterTestCase(TestCase):
 
     def test_auto_increment_order(self):
         # Arrange
-        course_increment = Course.objects.create(user=self.user, title='Test increment Course')
+        course_increment = Course.objects.create(user=self.user, name='Test increment Course')
 
         # Act
-        chapter1 = Chapter.objects.create(title='Chapter 1', course=course_increment)
-        chapter2 = Chapter.objects.create(title='Chapter 2', course=course_increment)
-        chapter3 = Chapter.objects.create(title='Chapter 3', course=course_increment)
+        chapter1 = Chapter.objects.create(name='Chapter 1', course=course_increment)
+        chapter2 = Chapter.objects.create(name='Chapter 2', course=course_increment)
+        chapter3 = Chapter.objects.create(name='Chapter 3', course=course_increment)
 
         # Assert
         self.assertEqual(chapter1.order, 1)
@@ -84,11 +53,11 @@ class ChapterTestCase(TestCase):
 
     def test_auto_decrement_order(self):
         # Arrange
-        course_dencrement = Course.objects.create(user=self.user, title='Test increment Course')
+        course_dencrement = Course.objects.create(user=self.user, name='Test increment Course')
         # Depends on auto_increment_order working
-        chapter1 = Chapter.objects.create(title='Chapter 1', course=course_dencrement)
-        chapter2 = Chapter.objects.create(title='Chapter 2', course=course_dencrement)
-        chapter3 = Chapter.objects.create(title='Chapter 3', course=course_dencrement)
+        chapter1 = Chapter.objects.create(name='Chapter 1', course=course_dencrement)
+        chapter2 = Chapter.objects.create(name='Chapter 2', course=course_dencrement)
+        chapter3 = Chapter.objects.create(name='Chapter 3', course=course_dencrement)
 
         # Act
         chapter2.delete()
@@ -101,12 +70,12 @@ class ChapterTestCase(TestCase):
 
     def test_move_order_up(self):
         # Arrange
-        course_move = Course.objects.create(user=self.user, title='Test increment Course')
+        course_move = Course.objects.create(user=self.user, name='Test increment Course')
         # Depends on auto_increment_order working
-        chapter1 = Chapter.objects.create(title='Chapter 1', course=course_move)
-        chapter2 = Chapter.objects.create(title='Chapter 2', course=course_move)
-        chapter3 = Chapter.objects.create(title='Chapter 3', course=course_move)
-        chapter4 = Chapter.objects.create(title='Chapter 4', course=course_move)
+        chapter1 = Chapter.objects.create(name='Chapter 1', course=course_move)
+        chapter2 = Chapter.objects.create(name='Chapter 2', course=course_move)
+        chapter3 = Chapter.objects.create(name='Chapter 3', course=course_move)
+        chapter4 = Chapter.objects.create(name='Chapter 4', course=course_move)
 
         # Act
         chapter3.move_order(1, save=True)
@@ -123,12 +92,12 @@ class ChapterTestCase(TestCase):
 
     def test_move_order_down(self):
         # Arrange
-        course_move = Course.objects.create(user=self.user, title='Test increment Course')
+        course_move = Course.objects.create(user=self.user, name='Test increment Course')
         # Depends on auto_increment_order working
-        chapter1 = Chapter.objects.create(title='Chapter 1', course=course_move)
-        chapter2 = Chapter.objects.create(title='Chapter 2', course=course_move)
-        chapter3 = Chapter.objects.create(title='Chapter 3', course=course_move)
-        chapter4 = Chapter.objects.create(title='Chapter 4', course=course_move)
+        chapter1 = Chapter.objects.create(name='Chapter 1', course=course_move)
+        chapter2 = Chapter.objects.create(name='Chapter 2', course=course_move)
+        chapter3 = Chapter.objects.create(name='Chapter 3', course=course_move)
+        chapter4 = Chapter.objects.create(name='Chapter 4', course=course_move)
 
         # Act
         chapter1.move_order(3, save=True)
@@ -156,24 +125,9 @@ class ChapterTestCase(TestCase):
         subchapter = self.chapter.add_subchapter('Subchapter 1')
 
         # Assert
-        self.assertEqual(subchapter.title, 'Subchapter 1')
+        self.assertEqual(subchapter.name, 'Subchapter 1')
         self.assertEqual(subchapter.course, self.course)
         self.assertEqual(subchapter.parent_chapter, self.chapter)
         self.assertEqual(subchapter.order, 1)
         self.assertTrue(subchapter.is_numbered)
-
-
-    def test_add_progressinstance(self):
-        # Arrange
-        metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
-        course_metric = CourseMetrics.objects.create(course=self.course, metric=metric, achievement_level='Done')
-
-        # Act
-        progress_instance = self.chapter.add_progressinstance(course_metric, 15)
-
-        # Assert
-        self.assertEqual(progress_instance.content_object, self.chapter)
-        self.assertEqual(progress_instance.course_metric, course_metric)
-        self.assertEqual(progress_instance.metric_value, 0)
-        self.assertEqual(progress_instance.metric_max, 15)
 
