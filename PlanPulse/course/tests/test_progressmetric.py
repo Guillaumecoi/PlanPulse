@@ -11,7 +11,7 @@ from course.models.course import Course, Chapter
           
 class CourseMetricsTest(TestCase):
     def setUp(self):
-        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
+        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), name='Test Course')
         self.course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
 
     def test_str(self):
@@ -33,7 +33,7 @@ class CourseMetricsTest(TestCase):
 
 class AchievementMetricTest(TestCase):
     def setUp(self):
-        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
+        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), name='Test Course')
         self.course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
         self.achievement_level = AchievementMetric.objects.create(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
 
@@ -67,8 +67,8 @@ class AchievementMetricTest(TestCase):
 
 class InstanceMetricTest(TestCase):
     def setUp(self):
-        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
-        self.chapter = Chapter.objects.create(course=self.course, title='Test Chapter')
+        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), name='Test Course')
+        self.chapter = Chapter.objects.create(course=self.course, name='Test Chapter')
         self.course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
         self.content_type = ContentType.objects.get_for_model(self.chapter)
         self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, value=10)
@@ -104,7 +104,7 @@ class InstanceMetricTest(TestCase):
 
     def test_value_update_with_multiple_instances(self):
         # create a second chapter
-        chapter2 = Chapter.objects.create(course=self.course, title='Test Chapter 2')
+        chapter2 = Chapter.objects.create(course=self.course, name='Test Chapter 2')
         content_type2 = ContentType.objects.get_for_model(chapter2)
         progress_instance2 = InstanceMetric.objects.create(content_type=content_type2, object_id=chapter2.id, course_metric=self.course_metric, value=20)
 
@@ -127,8 +127,8 @@ class InstanceMetricTest(TestCase):
 
 class InstanceAchievementTest(TestCase):
     def setUp(self):
-        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
-        self.chapter = Chapter.objects.create(course=self.course, title='Test Chapter')
+        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), name='Test Course')
+        self.chapter = Chapter.objects.create(course=self.course, name='Test Chapter')
         self.course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
         self.content_type = ContentType.objects.get_for_model(self.chapter)
         self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, value=10)
@@ -178,7 +178,7 @@ class InstanceAchievementTest(TestCase):
 
     def test_achievement_metric_with_multiple_achievements(self):
         # create a second progress_instance
-        chapter2 = Chapter.objects.create(course=self.course, title='Test Chapter 2')
+        chapter2 = Chapter.objects.create(course=self.course, name='Test Chapter 2')
         content_type2 = ContentType.objects.get_for_model(chapter2)
         progress_instance2 = InstanceMetric.objects.create(content_type=content_type2, object_id=chapter2.id, course_metric=self.course_metric, value=20)
         achievement2 = InstanceAchievement.objects.create(progress_instance=progress_instance2, achievement_metric=self.achievement_metric, value=15, achieved_at=None)
