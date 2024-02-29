@@ -5,7 +5,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.forms import ValidationError
 from datetime import timedelta
-from .course import Course
+from .course import Course, Trackable
 from .metric import Metric, Number, Time, Boolean, Percentage
 
 
@@ -28,7 +28,7 @@ class CourseMetrics(models.Model):
         unique_together = ('course', 'name')
 
     def __str__(self):
-        return f"{self.course.title} - {self.name}"
+        return f"{self.course.name} - {self.name}"
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -47,7 +47,7 @@ class CourseMetrics(models.Model):
     
         return metric_class()
     
-    def getTotal(self):
+    def get_total(self):
         '''
         Returns the total value of the metric
         '''
@@ -68,7 +68,6 @@ class AchievementMetric(models.Model):
     achievement_level = models.CharField(max_length=255)
     weight = models.PositiveIntegerField(default=1, validators=[MaxValueValidator(100)])
     time_estimate = models.DurationField(null=True, blank=True)
-    value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
     class Meta:
         unique_together = ('course_metric', 'achievement_level')
@@ -76,23 +75,12 @@ class AchievementMetric(models.Model):
     def __str__(self):
         return f"{self.course_metric} {self.achievement_level}"
     
-    def clean(self):      
-        if self.value != self.get_value():
-            raise ValidationError("The value cannot be less than the sum of the values of the instance achievements")
-        
+    def clean(self):              
         if self.time_estimate:
             if self.time_estimate < timedelta(0):
                 raise ValidationError("The time estimate cannot be negative")
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        self.course_metric.course.modified()
-        
-    def update_value(self):
-        self.value = self.get_value()
-        self.save()
-
-    def get_value(self):
+    def get_total(self):
         #TODO control based on the metric type
         return InstanceAchievement.objects.filter(achievement_metric=self).aggregate(models.Sum('value'))['value__sum'] or 0
 
@@ -101,7 +89,7 @@ class InstanceMetric(models.Model):
     '''
     Tracks the progress of a user in a specific instance (e.g., course, chapter) using a specific metric
     '''
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)  # Reference to the content type shoud be a trackable object
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
@@ -111,7 +99,13 @@ class InstanceMetric(models.Model):
     class Meta:
         unique_together = ('content_type', 'object_id', 'course_metric')
 
+    def clean(self):
+        # Validate that the content_object is an instance of a Trackable subclass
+        if not isinstance(self.content_object, Trackable):
+            raise ValidationError('Content object must be an instance of a Trackable subclass.')
+
     def save(self, *args, **kwargs):
+        self.clean()  # Call the clean method to validate before saving
         if self.value is None:
             self.value = 0
         super().save(*args, **kwargs)
@@ -140,11 +134,6 @@ class InstanceAchievement(models.Model):
         if self.value is None:
             self.value = 0
         super().save(*args, **kwargs)
-        self.achievement_metric.update_value()
-
-    def delete(self, *args, **kwargs):
-        super().delete(*args, **kwargs)
-        self.achievement_metric.update_value()
 
     def update_value(self):
         values = list(AchievementChange.objects.filter(instance_achievement=self).values_list('value', flat=True))
