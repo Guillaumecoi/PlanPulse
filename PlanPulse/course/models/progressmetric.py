@@ -159,19 +159,19 @@ class StudySession(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(null=True, blank=True)
-    time_spent = models.DurationField(null=True, blank=True)
+    duration = models.DurationField(null=True, blank=True)
 
     def clean(self):
-        if self.time_spent:
-            if self.time_spent < timedelta(0):
+        if self.duration:
+            if self.duration < timedelta(0):
                 raise ValidationError("The time spent cannot be negative")
             
         if self.end_time and self.start_time:
             if self.end_time < self.start_time:
                 raise ValidationError("The end time cannot be earlier than the start time")
                  
-        if self.time_spent and self.end_time and self.start_time:
-            if self.time_spent > self.end_time - self.start_time:
+        if self.duration and self.end_time and self.start_time:
+            if self.duration > self.end_time - self.start_time:
                 raise ValidationError("The time spent cannot exceed the difference between the end and start time")
             
         if self.start_time or self.end_time:
