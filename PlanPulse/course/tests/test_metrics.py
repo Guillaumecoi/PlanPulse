@@ -34,6 +34,11 @@ class NumberTest(unittest.TestCase):
             self.number.subtract(5, -3)
             self.number.subtract(-5, -3)
 
+    def test_number_sum(self):
+        number = Number()
+        result = number.sum([Decimal(1.00), Decimal(2.00), Decimal(3.00), Decimal(4.00), Decimal(5.00)])
+        self.assertEqual(result, 15)
+
 
 class TestBoolean(unittest.TestCase):
     def setUp(self):
@@ -56,6 +61,11 @@ class TestBoolean(unittest.TestCase):
     def test_subtract(self):
         with self.assertRaises(ValidationError):
             self.boolean.subtract(True, False)
+
+    def test_boolean_sum(self):
+        boolean = Boolean()
+        with self.assertRaises(ValidationError):
+            boolean.sum([Decimal(1.00), Decimal(0.00), Decimal(1.00)])
 
 
 class TestTime(unittest.TestCase):
@@ -109,6 +119,10 @@ class TestTime(unittest.TestCase):
             self.time.subtract(timedelta(seconds=5), timedelta(seconds=-3))
             self.time.subtract(timedelta(seconds=-5), timedelta(seconds=-3))
 
+    def test_time_sum(self):
+        result = self.time.sum([Decimal(10.00), Decimal(20.00), Decimal(30.00)])
+        self.assertEqual(result, timedelta(seconds=60))
+
 
 class TestPercentage(unittest.TestCase):
     def setUp(self):
@@ -160,5 +174,9 @@ class TestPercentage(unittest.TestCase):
             self.percentage.subtract(Decimal(-5.00), Decimal(-3.00))
             self.percentage.subtract(Decimal(101.00), Decimal(3.00))
 
-    
+    def test_percentage_sum(self):
+        result = self.percentage.sum([Decimal(10.5), Decimal(20.5), Decimal(30.5)])
+        self.assertEqual(result, Decimal(61.5))
 
+        with self.assertRaises(ValidationError):
+            self.percentage.sum([Decimal(10.5), Decimal(20.5), Decimal(30.5), Decimal(99)])

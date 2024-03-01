@@ -19,6 +19,13 @@ class Metric:
     def subtract(self, value1, value2):
         raise NotImplementedError('Subclasses must implement this method')
     
+    def sum(self, values):
+        result = self.get(Decimal(0))
+        for value in values:
+            converted_value = self.get(value)
+            result = self.add(result, converted_value)
+        return result
+    
 
 class Number(Metric):
     '''
@@ -46,7 +53,6 @@ class Number(Metric):
         if value < 0:
             raise ValidationError('Invalid number value')
         
-
 
 class Time(Metric):
     '''
@@ -105,6 +111,9 @@ class Boolean(Metric):
     
     def subtract(self, value1, value2):
         raise ValidationError('Cannot subtract boolean values')
+    
+    def sum(self, values):
+        raise ValidationError('Cannot sum boolean values')
     
 
 class Percentage(Metric):
