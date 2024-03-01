@@ -51,8 +51,9 @@ class CourseMetrics(models.Model):
         '''
         Returns the total value of the metric
         '''
-        return InstanceMetric.objects.filter(course_metric=self).aggregate(models.Sum('value'))['value__sum'] or 0
-    
+        instances = InstanceMetric.objects.filter(course_metric=self).values_list('value', flat=True)
+        return self.getMetric().sum(instances)
+        
     def add_achievement_metric(self, achievement_level, weight, time_estimate=None, value=0):
         '''
         Adds a new achievement metric to the course metric
@@ -81,8 +82,11 @@ class AchievementMetric(models.Model):
                 raise ValidationError("The time estimate cannot be negative")
 
     def get_total(self):
-        #TODO control based on the metric type
-        return Achievements.objects.filter(achievement_metric=self).aggregate(models.Sum('value'))['value__sum'] or 0
+        achievements = Achievements.objects.filter(achievement_metric=self).values_list('value', flat=True)
+        return self.get_metric().sum(achievements)
+    
+    def get_metric(self):
+        return self.course_metric.getMetric()
 
 
 class InstanceMetric(models.Model):
@@ -100,14 +104,15 @@ class InstanceMetric(models.Model):
         unique_together = ('content_type', 'object_id', 'course_metric')
 
     def clean(self):
+        if self.value is None:
+            self.value = 0
+
         # Validate that the content_object is an instance of a Trackable subclass
         if not isinstance(self.content_object, Trackable):
             raise ValidationError('Content object must be an instance of a Trackable subclass.')
 
     def save(self, *args, **kwargs):
-        self.clean()  # Call the clean method to validate before saving
-        if self.value is None:
-            self.value = 0
+        self.clean()           
         super().save(*args, **kwargs)
 
 
@@ -123,20 +128,28 @@ class Achievements(models.Model):
     class Meta:
         unique_together = ('progress_instance', 'achievement_metric', 'study_session')
 
-    def clean(self):
-        if self.value > self.progress_instance.value:
-            raise ValidationError("The value cannot exceed the maximum metric value")
-        
+    def clean(self):  
+        if self.value is None:
+            self.value = 0
+     
         if self.progress_instance.course_metric != self.achievement_metric.course_metric:
             raise ValidationError("The achievement metric must belong to the same course metric as the progress instance")
         
         if self.study_session:
             if self.study_session.user != self.progress_instance.course_metric.course.user:
                 raise ValidationError("The study session must belong to the same user as the progress instance")
+
+        instance_Achievements = (Achievements.objects  # Sum of all achievements for the same progress instance excluding the current one
+                                 .filter(progress_instance=self.progress_instance)
+                                 .exclude(id=self.id)
+                                 .aggregate(models.Sum('value'))['value__sum'] or 0)
+        instance_Achievements += self.value  # Add the current achievement value
+
+        if self.progress_instance.value < instance_Achievements:
+            raise ValidationError("The sum of the achievement values cannot exceed the progress instance value")
     
     def save(self, *args, **kwargs):
-        if self.value is None:
-            self.value = 0
+        self.clean()
         super().save(*args, **kwargs)
 
     def get_metric(self):
@@ -153,6 +166,18 @@ class StudySession(models.Model):
     time_spent = models.DurationField(null=True, blank=True)
 
     def clean(self):
+        if self.time_spent:
+            if self.time_spent < timedelta(0):
+                raise ValidationError("The time spent cannot be negative")
+            
         if self.end_time and self.start_time:
             if self.end_time < self.start_time:
                 raise ValidationError("The end time cannot be earlier than the start time")
+                 
+        if self.time_spent and self.end_time and self.start_time:
+            if self.time_spent > self.end_time - self.start_time:
+                raise ValidationError("The time spent cannot exceed the difference between the end and start time")
+            
+        if self.start_time or self.end_time:
+            if not self.end_time or not self.start_time:
+                raise ValidationError("Both start and end time or neither must be set")
