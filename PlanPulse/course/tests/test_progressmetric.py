@@ -5,196 +5,113 @@ from django.test import TestCase
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
-from course.models.progressmetric import AchievementChange, ProgressMetrics, CourseMetrics, AchievementMetric, InstanceMetric, InstanceAchievement, StudySession
+from course.models.progressmetric import CourseMetrics, AchievementMetric, InstanceMetric, Achievements
 from course.models.metric import Number, Time, Boolean, Percentage
 from course.models.course import Course, Chapter
 
-class ProgressMetricsTest(TestCase):
-    def setUp(self):
-        self.progress_metric_number = ProgressMetrics(name='Test Metric', metric_type='number')
-        self.progress_metric_time = ProgressMetrics(name='Test Metric', metric_type='time')
-        self.progress_metric_boolean = ProgressMetrics(name='Test Metric', metric_type='boolean')
-        self.progress_metric_percentage = ProgressMetrics(name='Test Metric', metric_type='percentage')
-
-    def test_getMetric(self):
-        self.assertIsInstance(self.progress_metric_number.getMetric(), Number)
-        self.assertIsInstance(self.progress_metric_time.getMetric(), Time)
-        self.assertIsInstance(self.progress_metric_boolean.getMetric(), Boolean)
-        self.assertIsInstance(self.progress_metric_percentage.getMetric(), Percentage)
-
-    def test_get_correct(self):
-        self.assertEqual(self.progress_metric_number.get(Decimal(5.00)), 5)
-        self.assertEqual(self.progress_metric_time.get(Decimal(5.00)), timedelta(seconds=5))
-        self.assertEqual(self.progress_metric_boolean.get(1), True)
-        self.assertEqual(self.progress_metric_percentage.get(Decimal(5.00)), Decimal(5.00))
-
-    def test_get_incorrect(self):
-        with self.assertRaises(ValidationError):
-            self.progress_metric_number.get(Decimal(-5.00))
-            self.progress_metric_time.get(Decimal(-5.00))
-            self.progress_metric_boolean.get(5)
-            self.progress_metric_percentage.get(Decimal(-5.00))
-
-    def test_put_correct(self):
-        self.assertEqual(self.progress_metric_number.put(5), 5)
-        self.assertEqual(self.progress_metric_time.put(timedelta(seconds=5)), Decimal(5.00))
-        self.assertEqual(self.progress_metric_boolean.put(True), 1)
-        self.assertEqual(self.progress_metric_percentage.put(Decimal(5.00)), Decimal(5.00))
-
-    def test_put_incorrect(self):
-        with self.assertRaises(ValidationError):
-            self.progress_metric_number.put(-5)
-            self.progress_metric_time.put(timedelta(seconds=-5))
-            self.progress_metric_boolean.put(5)
-            self.progress_metric_percentage.put(Decimal(-5.00))
-
-    def test_add_correct(self):
-        self.assertEqual(self.progress_metric_number.add(2, 3), 5)
-        self.assertEqual(self.progress_metric_time.add(timedelta(seconds=2), timedelta(seconds=3)), timedelta(seconds=5))
-        self.assertEqual(self.progress_metric_percentage.add(Decimal(2.00), Decimal(3.00)), Decimal(5.00))
-
-    def test_add_incorrect(self):
-        with self.assertRaises(ValidationError):
-            self.progress_metric_number.add(-2, 3)
-            self.progress_metric_time.add(timedelta(seconds=-2), timedelta(seconds=3))
-            self.progress_metric_boolean.add(True, False)
-            self.progress_metric_percentage.add(Decimal(-2.00), Decimal(3.00))
-
-    def test_subtract_correct(self):
-        self.assertEqual(self.progress_metric_number.subtract(5, 3), 2)
-        self.assertEqual(self.progress_metric_time.subtract(timedelta(seconds=5), timedelta(seconds=3)), timedelta(seconds=2))
-        self.assertEqual(self.progress_metric_percentage.subtract(Decimal(5.00), Decimal(3.00)), Decimal(2.00))
-
-    def test_subtract_incorrect(self):
-        with self.assertRaises(ValidationError):
-            self.progress_metric_number.subtract(-5, 3)
-            self.progress_metric_time.subtract(timedelta(seconds=-5), timedelta(seconds=3))
-            self.progress_metric_boolean.subtract(True, False)
-            self.progress_metric_percentage.subtract(Decimal(-5.00), Decimal(3.00))
-            
-
+          
 class CourseMetricsTest(TestCase):
     def setUp(self):
-        self.progress_metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
-        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
-        self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
+        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), name='Test Course')
+        self.course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
 
     def test_str(self):
         self.assertEqual(str(self.course_metric), 'Test Course - Pages')
 
-    def test_clean_negative_metric_max(self):
-        self.course_metric.metric_max = -5
-        with self.assertRaises(ValidationError):
-            self.course_metric.save()
-            self.course_metric.full_clean()
+    def test_getMetric(self):
+        # Arrange
+        number_metric = CourseMetrics.objects.create(course=self.course, name='number', metric_type='number')
+        time_metric = CourseMetrics.objects.create(course=self.course, name='time', metric_type='time')
+
+        # Act & Assert
+        self.assertIsInstance(number_metric.getMetric(), Number)
+        self.assertIsInstance(time_metric.getMetric(), Time)
 
 
 class AchievementMetricTest(TestCase):
     def setUp(self):
-        self.progress_metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
-        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
-        self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
-        self.achievement_level = AchievementMetric.objects.create(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), name='Test Course')
+        self.course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
+        self.achievement_metric = AchievementMetric.objects.create(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
 
     def test_str(self):
-        self.assertEqual(str(self.achievement_level), 'Test Course - Pages Done')
+        self.assertEqual(str(self.achievement_metric), 'Test Course - Pages Done')
 
     def test_clean_negative_weight(self):
-        self.achievement_level.weight = -5
+        self.achievement_metric.weight = -5
         with self.assertRaises(ValidationError):
-            self.achievement_level.full_clean()
+            self.achievement_metric.full_clean()
 
     def test_clean_over_100_weight(self):
-        self.achievement_level.weight = 101
+        self.achievement_metric.weight = 101
         with self.assertRaises(ValidationError):
-            self.achievement_level.full_clean()
+            self.achievement_metric.full_clean()
 
     def test_clean_negative_time_estimate(self):
-        self.achievement_level.time_estimate = timedelta(minutes=-1)
+        self.achievement_metric.time_estimate = timedelta(minutes=-1)
         with self.assertRaises(ValidationError):
-            self.achievement_level.full_clean()
+            self.achievement_metric.full_clean()
 
-    def test_clean_negative_value(self):
-        self.achievement_level.value = -5
-        with self.assertRaises(ValidationError):
-            self.achievement_level.full_clean()
-
-    def test_clean_value_exceeds_max(self):
-        self.achievement_level.value = 15
-        with self.assertRaises(ValidationError):
-            self.achievement_level.clean()
 
 class InstanceMetricTest(TestCase):
     def setUp(self):
-        self.progress_metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
-        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
-        self.chapter = Chapter.objects.create(course=self.course, title='Test Chapter')
-        self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
+        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), name='Test Course')
+        self.chapter = Chapter.objects.create(course=self.course, name='Test Chapter')
+        self.course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
         self.content_type = ContentType.objects.get_for_model(self.chapter)
-        self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, metric_max=10)
+        self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, value=10)
 
-    def test_clean_negative_metric_max(self):
-        self.progress_instance.metric_max = -5
+    def test_clean_negative_value(self):
+        self.progress_instance.value = -5
         with self.assertRaises(ValidationError):
             self.progress_instance.full_clean()
 
-    def test_metric_max_update(self):
-        # Save the initial metric_max of course_metric
-        self.course_metric.refresh_from_db()
-        initial_metric_max = self.course_metric.metric_max
-        # Check if the metric_max has been updated to 10
-        self.assertEqual(initial_metric_max, 10)
+    def test_value_update(self):
+        self.assertEqual(self.course_metric.get_total(), 10)
 
-        # Increase the metric_max of progress_instance and save it
-        self.progress_instance.metric_max += 10
+        # Increase the value of progress_instance and save it
+        self.progress_instance.value += 10
         self.progress_instance.save()
-        self.course_metric.refresh_from_db()
-        self.assertEqual(self.course_metric.metric_max, 20)
+        self.assertEqual(self.course_metric.get_total(), 20)
 
-        self.progress_instance.metric_max -= 15
+        self.progress_instance.value -= 15
         self.progress_instance.save()
-        self.course_metric.refresh_from_db()
-        self.assertEqual(self.course_metric.metric_max, 5)
+        self.assertEqual(self.course_metric.get_total(), 5)
 
-        # Increase the metric_max of progress_instance and save it
-        self.progress_instance.metric_max = None
+        # Increase the value of progress_instance and save it
+        self.progress_instance.value = None
         self.progress_instance.save()
-        self.course_metric.refresh_from_db()
-        self.assertEqual(self.course_metric.metric_max, 0)
+        self.assertEqual(self.course_metric.get_total(), 0)
 
-    def test_metric_max_update_with_multiple_instances(self):
+    def test_value_update_with_multiple_instances(self):
         # create a second chapter
-        chapter2 = Chapter.objects.create(course=self.course, title='Test Chapter 2')
+        chapter2 = Chapter.objects.create(course=self.course, name='Test Chapter 2')
         content_type2 = ContentType.objects.get_for_model(chapter2)
-        progress_instance2 = InstanceMetric.objects.create(content_type=content_type2, object_id=chapter2.id, course_metric=self.course_metric, metric_max=20)
+        progress_instance2 = InstanceMetric.objects.create(content_type=content_type2, object_id=chapter2.id, course_metric=self.course_metric, value=20)
 
-        self.course_metric.refresh_from_db()
-        initial_metric_max = self.course_metric.metric_max
-        self.assertEqual(initial_metric_max, 30)
+        initial_value = self.course_metric.get_total()
+        self.assertEqual(initial_value, 30)
 
-        # Change the metric_max of both progress_instances and save it
-        self.progress_instance.metric_max += 10
-        progress_instance2.metric_max -= 5
+        # Change the value of both progress_instances and save it
+        self.progress_instance.value += 10
+        progress_instance2.value -= 5
         self.progress_instance.save()
         progress_instance2.save()
-        self.course_metric.refresh_from_db()
-        self.assertEqual(self.course_metric.metric_max, 35)
+        self.assertEqual(self.course_metric.get_total(), 35)
 
     def test_delete(self):
         self.progress_instance.delete()
-        self.course_metric.refresh_from_db()
-        self.assertEqual(self.course_metric.metric_max, 0)
+        self.assertEqual(self.course_metric.get_total(), 0)
 
 class InstanceAchievementTest(TestCase):
     def setUp(self):
-        self.progress_metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
-        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), title='Test Course')
-        self.chapter = Chapter.objects.create(course=self.course, title='Test Chapter')
-        self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
+        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), name='Test Course')
+        self.chapter = Chapter.objects.create(course=self.course, name='Test Chapter')
+        self.course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
         self.content_type = ContentType.objects.get_for_model(self.chapter)
-        self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, metric_max=10)
+        self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, value=10)
         self.achievement_metric = AchievementMetric.objects.create(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
-        self.achievement = InstanceAchievement.objects.create(progress_instance=self.progress_instance, achievement_metric=self.achievement_metric, value=5, achieved_at=None)
+        self.achievement = Achievements.objects.create(progress_instance=self.progress_instance, achievement_metric=self.achievement_metric, value=5)
 
     def test_clean_value_exceeds_max(self):
         self.achievement.value = 15
@@ -207,7 +124,7 @@ class InstanceAchievementTest(TestCase):
             self.achievement.full_clean()
 
     def test_clean_different_course_metric(self):
-        course_metric2 = CourseMetrics.objects.create(course=self.course, metric=ProgressMetrics.objects.create(name='Slides', metric_type='number'))
+        course_metric2 = CourseMetrics.objects.create(course=self.course, name='Slides', metric_type='number')
         achievement_metric2 = AchievementMetric.objects.create(course_metric=course_metric2, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
         self.achievement.achievement_metric = achievement_metric2
         with self.assertRaises(ValidationError):
@@ -215,37 +132,32 @@ class InstanceAchievementTest(TestCase):
 
     def test_achievement_metric_update(self):
         # Save the initial value of achievement_metric
-        self.achievement_metric.refresh_from_db()
-        initial_value = self.achievement_metric.value
+        initial_value = self.achievement_metric.get_total()
         self.assertEqual(initial_value, 5)
 
         # Increase the value of achievement and save it
         self.achievement.value += 5
         self.achievement.save()
-        self.achievement_metric.refresh_from_db()
-        self.assertEqual(self.achievement_metric.value, 10)
+        self.assertEqual(self.achievement_metric.get_total(), 10)
 
         # Decrease the value of achievement and save it
         self.achievement.value -= 5
         self.achievement.save()
-        self.achievement_metric.refresh_from_db()
-        self.assertEqual(self.achievement_metric.value, 5)
+        self.assertEqual(self.achievement_metric.get_total(), 5)
 
         # Set the value of achievement to None and save it
         self.achievement.value = None
         self.achievement.save()
-        self.achievement_metric.refresh_from_db()
-        self.assertEqual(self.achievement_metric.value, 0)
+        self.assertEqual(self.achievement_metric.get_total(), 0)
 
     def test_achievement_metric_with_multiple_achievements(self):
         # create a second progress_instance
-        chapter2 = Chapter.objects.create(course=self.course, title='Test Chapter 2')
+        chapter2 = Chapter.objects.create(course=self.course, name='Test Chapter 2')
         content_type2 = ContentType.objects.get_for_model(chapter2)
-        progress_instance2 = InstanceMetric.objects.create(content_type=content_type2, object_id=chapter2.id, course_metric=self.course_metric, metric_max=20)
-        achievement2 = InstanceAchievement.objects.create(progress_instance=progress_instance2, achievement_metric=self.achievement_metric, value=15, achieved_at=None)
+        progress_instance2 = InstanceMetric.objects.create(content_type=content_type2, object_id=chapter2.id, course_metric=self.course_metric, value=20)
+        achievement2 = Achievements.objects.create(progress_instance=progress_instance2, achievement_metric=self.achievement_metric, value=15)
 
-        self.achievement_metric.refresh_from_db()
-        initial_value = self.achievement_metric.value
+        initial_value = self.achievement_metric.get_total()
         self.assertEqual(initial_value, 20)
 
         # Change the value of both achievements and save it
@@ -253,63 +165,117 @@ class InstanceAchievementTest(TestCase):
         achievement2.value -= 10
         self.achievement.save()
         achievement2.save()
-        self.achievement_metric.refresh_from_db()
-        self.assertEqual(self.achievement_metric.value, 15)
+        self.assertEqual(self.achievement_metric.get_total(), 15)
 
     def test_delete(self):
         self.achievement.delete()
-        self.achievement_metric.refresh_from_db()
-        self.assertEqual(self.achievement_metric.value, 0)
+        self.assertEqual(self.achievement_metric.get_total(), 0)
 
 
-class AchievementChangeTest(TestCase):
+class MetricMethodsTest(TestCase):
     def setUp(self):
-        self.progress_metric = ProgressMetrics.objects.create(name='Pages', metric_type='number')
-        self.user = User.objects.create_user(username='testuser', password='testpassword')
-        self.course = Course.objects.create(user=self.user, title='Test Course')
-        self.chapter = Chapter.objects.create(course=self.course, title='Test Chapter')
-        self.course_metric = CourseMetrics.objects.create(course=self.course, metric=self.progress_metric)
-        self.content_type = ContentType.objects.get_for_model(self.chapter)
-        self.progress_instance = InstanceMetric.objects.create(content_type=self.content_type, object_id=self.chapter.id, course_metric=self.course_metric, metric_max=10)
-        self.achievement_metric = AchievementMetric.objects.create(course_metric=self.course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
-        self.achievement = InstanceAchievement.objects.create(progress_instance=self.progress_instance, achievement_metric=self.achievement_metric)
+        self.course = Course.objects.create(user=User.objects.create_user(username='testuser', password='testpassword'), name='Test Course')
+        self.chapter1 = Chapter.objects.create(course=self.course, name='Test Chapter')
+        self.chapter2 = Chapter.objects.create(course=self.course, name='Test Chapter 2')
+        self.content_type1 = ContentType.objects.get_for_model(self.chapter1)
+        self.content_type2 = ContentType.objects.get_for_model(self.chapter2)
 
-        self.study_session = StudySession.objects.create(user=self.user, start_time=timezone.now(), end_time=timezone.now() + timedelta(minutes=30), time_spent=timedelta(minutes=30))
-        self.achievement_change = AchievementChange.objects.create(instance_achievement=self.achievement, study_session=self.study_session, value=5)  
+    def test_coursemetric_number(self):
+        # Arrange
+        course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
+        progress_instance1 = InstanceMetric.objects.create(content_type=self.content_type1, object_id=self.chapter1.id, course_metric=course_metric, value=10)
+        progress_instance2 = InstanceMetric.objects.create(content_type=self.content_type2, object_id=self.chapter2.id, course_metric=course_metric, value=20)
 
-    def test_clean_negative_value(self):
-        self.achievement_change.value = -5
-        with self.assertRaises(ValidationError):
-            self.achievement_change.full_clean()
+        # Act & Assert
+        self.assertEqual(course_metric.get_total(), 30)
 
-    def test_clean_different_user(self):
-        user2 = User.objects.create_user(username='testuser2', password='testpassword')
-        self.study_session.user = user2
-        with self.assertRaises(ValidationError):
-            self.achievement_change.clean()
+        # Increase the value of progress_instance and save it
+        progress_instance1.value += 10
+        progress_instance1.save()
+        self.assertEqual(course_metric.get_total(), 40)
 
-    def test_update_achievement(self):
-        # The value grows
-        self.achievement_change.value = 10
-        self.achievement_change.save()
-        self.achievement.refresh_from_db()
-        self.assertEqual(self.achievement.value, 10)
+        progress_instance2.value -= 15
+        progress_instance2.save()
+        self.assertEqual(course_metric.get_total(), 25)
 
-        # The value decreases
-        self.achievement_change.value = 3
-        self.achievement_change.save()
-        self.achievement.refresh_from_db()
-        self.assertEqual(self.achievement.value, 3)
+        # Increase the value of progress_instance and save it
+        progress_instance2.value = None
+        progress_instance2.save()
+        self.assertEqual(course_metric.get_total(), 20)
 
-        # The value becomes None
-        self.achievement_change.value = None
-        self.achievement_change.save()
-        self.achievement.refresh_from_db()
-        self.assertEqual(self.achievement.value, 0)
+    def test_coursemetric_time(self):
+        # Arrange
+        timemetric = Time()
+        course_metric = CourseMetrics.objects.create(course=self.course, name='Time', metric_type='time')
+        progress_instance1 = InstanceMetric.objects.create(content_type=self.content_type1, object_id=self.chapter1.id, course_metric=course_metric, value=timemetric.put(timedelta(minutes=10)))
+        progress_instance2 = InstanceMetric.objects.create(content_type=self.content_type2, object_id=self.chapter2.id, course_metric=course_metric, value=timemetric.put(timedelta(minutes=20)))
 
-    def test_delete(self):
-        self.achievement_change.delete()
-        self.achievement.refresh_from_db()
-        self.assertEqual(self.achievement.value, 0)
+        # Act & Assert
+        self.assertEqual(course_metric.get_total(), Decimal(60*30))
 
-    
+        # Increase the value of progress_instance and save it
+        progress_instance1.value = timemetric.add(progress_instance1.value, timedelta(minutes=10))
+        progress_instance1.save()
+        self.assertEqual(course_metric.get_total(), Decimal(60*40))
+
+        progress_instance2.value = timemetric.subtract(progress_instance2.value, timedelta(minutes=15))
+        progress_instance2.save()
+        self.assertEqual(course_metric.get_total(), Decimal(60*25))
+
+        # Increase the value of progress_instance and save it
+        progress_instance2.value = None
+        progress_instance2.save()
+        self.assertEqual(course_metric.get_total(), Decimal(60*20))
+
+    def test_achievementmetric_number(self):
+        # Arrange
+        course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
+        achievement_metric = AchievementMetric.objects.create(course_metric=course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        progress_instance1 = InstanceMetric.objects.create(content_type=self.content_type1, object_id=self.chapter1.id, course_metric=course_metric, value=10)
+        progress_instance2 = InstanceMetric.objects.create(content_type=self.content_type2, object_id=self.chapter2.id, course_metric=course_metric, value=20)
+        achievement1 = Achievements.objects.create(progress_instance=progress_instance1, achievement_metric=achievement_metric, value=5)
+        achievement2 = Achievements.objects.create(progress_instance=progress_instance2, achievement_metric=achievement_metric, value=10)
+
+        # Act & Assert
+        self.assertEqual(achievement_metric.get_total(), 15)
+
+        # Increase the value of achievement and save it
+        achievement1.value += 5
+        achievement1.save()
+        self.assertEqual(achievement_metric.get_total(), 20)
+
+        achievement2.value -= 5
+        achievement2.save()
+        self.assertEqual(achievement_metric.get_total(), 15)
+
+        # Set the value of achievement to None and save it
+        achievement2.value = None
+        achievement2.save()
+        self.assertEqual(achievement_metric.get_total(), 10)
+
+    def test_achievementmetric_time(self):
+        # Arrange
+        timemetric = Time()
+        course_metric = CourseMetrics.objects.create(course=self.course, name='Time', metric_type='time')
+        achievement_metric = AchievementMetric.objects.create(course_metric=course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        progress_instance1 = InstanceMetric.objects.create(content_type=self.content_type1, object_id=self.chapter1.id, course_metric=course_metric, value=timemetric.put(timedelta(minutes=10)))
+        progress_instance2 = InstanceMetric.objects.create(content_type=self.content_type2, object_id=self.chapter2.id, course_metric=course_metric, value=timemetric.put(timedelta(minutes=20)))
+        achievement1 = Achievements.objects.create(progress_instance=progress_instance1, achievement_metric=achievement_metric, value=timemetric.put(timedelta(minutes=5)))
+        achievement2 = Achievements.objects.create(progress_instance=progress_instance2, achievement_metric=achievement_metric, value=timemetric.put(timedelta(minutes=10)))
+
+        # Act & Assert
+        self.assertEqual(achievement_metric.get_total(), Decimal(60*15))
+
+        # Increase the value of achievement and save it
+        achievement1.value = timemetric.add(achievement1.value, timedelta(minutes=5))
+        achievement1.save()
+        self.assertEqual(achievement_metric.get_total(), Decimal(60*20))
+
+        achievement2.value = timemetric.subtract(achievement2.value, timedelta(minutes=5))
+        achievement2.save()
+        self.assertEqual(achievement_metric.get_total(), Decimal(60*15))
+
+        # Set the value of achievement to None and save it
+        achievement2.value = None
+        achievement2.save()
+        self.assertEqual(achievement_metric.get_total(), Decimal(60*10))
