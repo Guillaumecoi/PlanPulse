@@ -22,14 +22,10 @@ class CourseMetricsTest(TestCase):
         # Arrange
         number_metric = CourseMetrics.objects.create(course=self.course, name='number', metric_type='number')
         time_metric = CourseMetrics.objects.create(course=self.course, name='time', metric_type='time')
-        boolean_metric = CourseMetrics.objects.create(course=self.course, name='boolean', metric_type='boolean')
-        percentage_metric = CourseMetrics.objects.create(course=self.course, name='percentage', metric_type='percentage')
 
         # Act & Assert
         self.assertIsInstance(number_metric.getMetric(), Number)
         self.assertIsInstance(time_metric.getMetric(), Time)
-        self.assertIsInstance(boolean_metric.getMetric(), Boolean)
-        self.assertIsInstance(percentage_metric.getMetric(), Percentage)
 
 
 class AchievementMetricTest(TestCase):
@@ -230,4 +226,56 @@ class MetricMethodsTest(TestCase):
         progress_instance2.value = None
         progress_instance2.save()
         self.assertEqual(course_metric.get_total(), Decimal(60*20))
-    
+
+    def test_achievementmetric_number(self):
+        # Arrange
+        course_metric = CourseMetrics.objects.create(course=self.course, name='Pages', metric_type='number')
+        achievement_metric = AchievementMetric.objects.create(course_metric=course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        progress_instance1 = InstanceMetric.objects.create(content_type=self.content_type1, object_id=self.chapter1.id, course_metric=course_metric, value=10)
+        progress_instance2 = InstanceMetric.objects.create(content_type=self.content_type2, object_id=self.chapter2.id, course_metric=course_metric, value=20)
+        achievement1 = Achievements.objects.create(progress_instance=progress_instance1, achievement_metric=achievement_metric, value=5)
+        achievement2 = Achievements.objects.create(progress_instance=progress_instance2, achievement_metric=achievement_metric, value=10)
+
+        # Act & Assert
+        self.assertEqual(achievement_metric.get_total(), 15)
+
+        # Increase the value of achievement and save it
+        achievement1.value += 5
+        achievement1.save()
+        self.assertEqual(achievement_metric.get_total(), 20)
+
+        achievement2.value -= 5
+        achievement2.save()
+        self.assertEqual(achievement_metric.get_total(), 15)
+
+        # Set the value of achievement to None and save it
+        achievement2.value = None
+        achievement2.save()
+        self.assertEqual(achievement_metric.get_total(), 10)
+
+    def test_achievementmetric_time(self):
+        # Arrange
+        timemetric = Time()
+        course_metric = CourseMetrics.objects.create(course=self.course, name='Time', metric_type='time')
+        achievement_metric = AchievementMetric.objects.create(course_metric=course_metric, achievement_level='Done', weight=1, time_estimate=timedelta(minutes=1))
+        progress_instance1 = InstanceMetric.objects.create(content_type=self.content_type1, object_id=self.chapter1.id, course_metric=course_metric, value=timemetric.put(timedelta(minutes=10)))
+        progress_instance2 = InstanceMetric.objects.create(content_type=self.content_type2, object_id=self.chapter2.id, course_metric=course_metric, value=timemetric.put(timedelta(minutes=20)))
+        achievement1 = Achievements.objects.create(progress_instance=progress_instance1, achievement_metric=achievement_metric, value=timemetric.put(timedelta(minutes=5)))
+        achievement2 = Achievements.objects.create(progress_instance=progress_instance2, achievement_metric=achievement_metric, value=timemetric.put(timedelta(minutes=10)))
+
+        # Act & Assert
+        self.assertEqual(achievement_metric.get_total(), Decimal(60*15))
+
+        # Increase the value of achievement and save it
+        achievement1.value = timemetric.add(achievement1.value, timedelta(minutes=5))
+        achievement1.save()
+        self.assertEqual(achievement_metric.get_total(), Decimal(60*20))
+
+        achievement2.value = timemetric.subtract(achievement2.value, timedelta(minutes=5))
+        achievement2.save()
+        self.assertEqual(achievement_metric.get_total(), Decimal(60*15))
+
+        # Set the value of achievement to None and save it
+        achievement2.value = None
+        achievement2.save()
+        self.assertEqual(achievement_metric.get_total(), Decimal(60*10))

@@ -16,8 +16,6 @@ class CourseMetrics(models.Model):
     TYPE_CHOICES = (
         ('number', 'Number'),
         ('time', 'Time'),
-        ('boolean', 'Boolean'),
-        ('percentage', 'Percentage'),
     )
 
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
@@ -41,8 +39,6 @@ class CourseMetrics(models.Model):
         metric_class = {
             'number': Number,
             'time': Time,
-            'boolean': Boolean,
-            'percentage': Percentage,
         }.get(self.metric_type, Metric)  # Fallback to the base Metric class, which raises NotImplementedError
     
         return metric_class()
