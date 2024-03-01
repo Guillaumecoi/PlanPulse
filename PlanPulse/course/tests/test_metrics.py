@@ -95,23 +95,45 @@ class TestTime(unittest.TestCase):
             self.time.put(True)
 
     def test_add(self):
-        self.assertEqual(self.time.add(timedelta(seconds=5), timedelta(seconds=3)), timedelta(seconds=8))
-        self.assertEqual(self.time.add(timedelta(seconds=0), timedelta(seconds=0)), timedelta(seconds=0))
-        self.assertEqual(self.time.add(timedelta(minutes=1), timedelta(seconds=0)), timedelta(minutes=1))
-        self.assertEqual(self.time.add(timedelta(hours=1), timedelta(seconds=0)), timedelta(hours=1))
-        self.assertEqual(self.time.add(timedelta(hours=1), timedelta(minutes=1)), timedelta(hours=1, minutes=1))
+        # Timedelta as input
+        self.assertEqual(self.time.add(timedelta(seconds=5), timedelta(seconds=3)), Decimal(8))
+        self.assertEqual(self.time.add(timedelta(seconds=0), timedelta(seconds=0)), Decimal(0))
+        self.assertEqual(self.time.add(timedelta(minutes=1), timedelta(seconds=0)), Decimal(60))
+        self.assertEqual(self.time.add(timedelta(hours=1), timedelta(seconds=0)), Decimal(3600))
+        self.assertEqual(self.time.add(timedelta(hours=1), timedelta(minutes=1)), Decimal(3660))
 
         with self.assertRaises(ValidationError):
             self.time.add(timedelta(seconds=-5), timedelta(seconds=3))
             self.time.add(timedelta(seconds=5), timedelta(seconds=-3))
             self.time.add(timedelta(seconds=-5), timedelta(seconds=-3))
 
+        # Decimal as input
+        self.assertEqual(self.time.add(Decimal(5), Decimal(3)), Decimal(8))
+        self.assertEqual(self.time.add(Decimal(0), Decimal(0)), Decimal(0))
+        self.assertEqual(self.time.add(Decimal(60), Decimal(0)), Decimal(60))
+        self.assertEqual(self.time.add(Decimal(3600), Decimal(0)), Decimal(3600))
+        self.assertEqual(self.time.add(Decimal(3600), Decimal(60)), Decimal(3660))
+
+        with self.assertRaises(ValidationError):
+            self.time.add(Decimal(-5), Decimal(3))
+            self.time.add(Decimal(5), Decimal(-3))
+            self.time.add(Decimal(-5), Decimal(-3))
+
+        # Mixed input
+        self.assertEqual(self.time.add(Decimal(5), timedelta(seconds=3)), Decimal(8))
+        self.assertEqual(self.time.add(timedelta(seconds=5), Decimal(3)), Decimal(8))
+
+        with self.assertRaises(ValidationError):
+            self.time.add(Decimal(-5), timedelta(seconds=3))
+            self.time.add(timedelta(seconds=5), Decimal(-3))
+
     def test_subtract(self):
-        self.assertEqual(self.time.subtract(timedelta(seconds=5), timedelta(seconds=3)), timedelta(seconds=2))
-        self.assertEqual(self.time.subtract(timedelta(seconds=0), timedelta(seconds=0)), timedelta(seconds=0))
-        self.assertEqual(self.time.subtract(timedelta(minutes=1), timedelta(seconds=0)), timedelta(minutes=1))
-        self.assertEqual(self.time.subtract(timedelta(hours=1), timedelta(seconds=0)), timedelta(hours=1))
-        self.assertEqual(self.time.subtract(timedelta(hours=1), timedelta(minutes=1)), timedelta(hours=1, minutes=-1))
+        # Timedelta as input
+        self.assertEqual(self.time.subtract(timedelta(seconds=5), timedelta(seconds=3)), Decimal(2))
+        self.assertEqual(self.time.subtract(timedelta(seconds=0), timedelta(seconds=0)), Decimal(0))
+        self.assertEqual(self.time.subtract(timedelta(minutes=1), timedelta(seconds=0)), Decimal(60))
+        self.assertEqual(self.time.subtract(timedelta(hours=1), timedelta(seconds=0)), Decimal(3600))
+        self.assertEqual(self.time.subtract(timedelta(hours=1), timedelta(minutes=1)), Decimal(3540))
 
         with self.assertRaises(ValidationError):
             self.time.subtract(timedelta(seconds=5), timedelta(seconds=10))
@@ -119,9 +141,48 @@ class TestTime(unittest.TestCase):
             self.time.subtract(timedelta(seconds=5), timedelta(seconds=-3))
             self.time.subtract(timedelta(seconds=-5), timedelta(seconds=-3))
 
+        # Decimal as input
+        self.assertEqual(self.time.subtract(Decimal(5), Decimal(3)), Decimal(2))
+        self.assertEqual(self.time.subtract(Decimal(0), Decimal(0)), Decimal(0))
+        self.assertEqual(self.time.subtract(Decimal(60), Decimal(0)), Decimal(60))
+        self.assertEqual(self.time.subtract(Decimal(3600), Decimal(0)), Decimal(3600))
+        self.assertEqual(self.time.subtract(Decimal(3600), Decimal(60)), Decimal(3540))
+
+        with self.assertRaises(ValidationError):
+            self.time.subtract(Decimal(5), Decimal(10))
+            self.time.subtract(Decimal(-5), Decimal(3))
+            self.time.subtract(Decimal(5), Decimal(-3))
+            self.time.subtract(Decimal(-5), Decimal(-3))
+
+        # Mixed input
+        self.assertEqual(self.time.subtract(Decimal(5), timedelta(seconds=3)), Decimal(2))
+        self.assertEqual(self.time.subtract(timedelta(seconds=5), Decimal(3)), Decimal(2))
+
+        with self.assertRaises(ValidationError):
+            self.time.subtract(Decimal(5), timedelta(seconds=10))
+            self.time.subtract(timedelta(seconds=5), Decimal(-3))
+
     def test_time_sum(self):
-        result = self.time.sum([Decimal(10.00), Decimal(20.00), Decimal(30.00)])
-        self.assertEqual(result, timedelta(seconds=60))
+        # Timedelta as input
+        self.assertEqual(self.time.sum([timedelta(seconds=10), timedelta(seconds=20), timedelta(seconds=30)]), Decimal(60))
+        self.assertEqual(self.time.sum([timedelta(seconds=10), timedelta(seconds=20)]), Decimal(30))
+        self.assertEqual(self.time.sum([timedelta(seconds=10)]), Decimal(10))
+
+        with self.assertRaises(ValidationError):
+            self.time.sum([timedelta(seconds=10), timedelta(seconds=20), timedelta(seconds=-40)])
+
+
+        # Decimal as input
+        self.assertEqual(self.time.sum([Decimal(10), Decimal(20), Decimal(30)]), Decimal(60))
+        self.assertEqual(self.time.sum([Decimal(10), Decimal(20)]), Decimal(30))
+        self.assertEqual(self.time.sum([Decimal(10)]), Decimal(10))
+
+        with self.assertRaises(ValidationError):
+            self.time.sum([Decimal(10), Decimal(20), Decimal(-40)])
+
+        # Mixed input
+        self.assertEqual(self.time.sum([Decimal(10), timedelta(seconds=20), Decimal(30)]), Decimal(60))
+        self.assertEqual(self.time.sum([timedelta(seconds=10), Decimal(20)]), Decimal(30))
 
 
 class TestPercentage(unittest.TestCase):

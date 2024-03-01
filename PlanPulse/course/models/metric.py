@@ -8,22 +8,36 @@ class Metric:
     Base class that coverts between Decimal values and the appropriate metric type
     '''
     def get(self, value):
+        '''
+        Converts a Decimal value to the appropriate metric type
+        '''
         raise NotImplementedError('Subclasses must implement this method')
 
     def put(self, value):
+        '''
+        Converts the metric type to a Decimal value
+        '''
         raise NotImplementedError('Subclasses must implement this method')
 
     def add(self, value, value2):
+        '''
+        Adds two metric values
+        '''
         raise NotImplementedError('Subclasses must implement this method')
     
     def subtract(self, value1, value2):
+        '''
+        Subtracts two metric values
+        '''
         raise NotImplementedError('Subclasses must implement this method')
     
     def sum(self, values):
+        '''
+        Sums a list of metric values
+        '''
         result = self.get(Decimal(0))
         for value in values:
-            converted_value = self.get(value)
-            result = self.add(result, converted_value)
+            result = self.add(result, value)
         return result
     
 
@@ -67,16 +81,22 @@ class Time(Metric):
         return Decimal(value.total_seconds())
     
     def add(self, value1, value2):
-        self.isTimeDelta(value1)
-        self.isTimeDelta(value2)
-        return value1 + value2
+        if isinstance(value1, Decimal):
+            value1 = self.get(value1)
+        if isinstance(value2, Decimal):
+            value2 = self.get(value2) 
+
+        return self.put(value1 + value2)
 
     def subtract(self, value1, value2):
-        self.isTimeDelta(value1)
-        self.isTimeDelta(value2)
+        if isinstance(value1, Decimal):
+            value1 = self.get(value1)
+        if isinstance(value2, Decimal):
+            value2 = self.get(value2)
+
         if value1 < value2:
             raise ValidationError('Invalid time value: negative result')
-        return value1 - value2
+        return self.put(value1 - value2)
 
     def isTimeDecimal(self, value):
         if not isinstance(value, Decimal):
