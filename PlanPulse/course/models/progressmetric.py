@@ -9,7 +9,7 @@ from .course import Course, Trackable
 from .metric import Metric, Number, Time, Boolean, Percentage
 
 
-class CourseMetrics(models.Model):
+class CourseMetric(models.Model):
     '''
     Tracks the progress of a user in a course using a specific metric
     '''
@@ -61,7 +61,7 @@ class AchievementMetric(models.Model):
     '''
     Tracks different achievement levels within a course metric.
     '''
-    course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE, related_name='achievement_levels')
+    course_metric = models.ForeignKey(CourseMetric, on_delete=models.CASCADE, related_name='achievement_levels')
     achievement_level = models.CharField(max_length=255)
     weight = models.PositiveIntegerField(default=1, validators=[MaxValueValidator(100)])
     time_estimate = models.DurationField(null=True, blank=True)
@@ -78,7 +78,7 @@ class AchievementMetric(models.Model):
                 raise ValidationError("The time estimate cannot be negative")
 
     def get_total(self):
-        achievements = Achievements.objects.filter(achievement_metric=self).values_list('value', flat=True)
+        achievements = Achievement.objects.filter(achievement_metric=self).values_list('value', flat=True)
         return self.get_metric().sum(achievements)
     
     def get_metric(self):
@@ -93,7 +93,7 @@ class InstanceMetric(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
-    course_metric = models.ForeignKey(CourseMetrics, on_delete=models.CASCADE)
+    course_metric = models.ForeignKey(CourseMetric, on_delete=models.CASCADE)
     value = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
     class Meta:
@@ -112,7 +112,7 @@ class InstanceMetric(models.Model):
         super().save(*args, **kwargs)
 
 
-class Achievements(models.Model):
+class Achievement(models.Model):
     '''
     Tracks specific achievements or milestones within a progress instance.
     '''
@@ -135,7 +135,7 @@ class Achievements(models.Model):
             if self.study_session.user != self.progress_instance.course_metric.course.user:
                 raise ValidationError("The study session must belong to the same user as the progress instance")
 
-        instance_Achievements = (Achievements.objects  # Sum of all achievements for the same progress instance excluding the current one
+        instance_Achievements = (Achievement.objects  # Sum of all achievements for the same progress instance excluding the current one
                                  .filter(progress_instance=self.progress_instance)
                                  .exclude(id=self.id)
                                  .aggregate(models.Sum('value'))['value__sum'] or 0)
