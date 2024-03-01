@@ -12,17 +12,6 @@
             "django": true
         },
         {
-            "name": "Python: Django Tests",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/PlanPulse/manage.py",
-            "args": [
-                "test",
-                "course.tests.test_progressmetric"
-            ],
-            "django": true
-        },
-        {
             "name": "Python: Django Makemigrations",
             "type": "debugpy",
             "request": "launch",
@@ -41,6 +30,17 @@
                 "migrate"
             ],
             "django": true
-        }
+        },
+        {
+            "name": "Python: Django Test Course",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/PlanPulse/manage.py",
+            "args": [
+                "test",
+                "course",
+            ],
+            "django": true
+        },
     ]
 }
