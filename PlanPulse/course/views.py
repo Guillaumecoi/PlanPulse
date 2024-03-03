@@ -1,23 +1,17 @@
-from django.shortcuts import render
-from django.urls import reverse_lazy
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import CreateCourseSerializer
 from .models import Course
 
 
-class CreateCourseView(CreateView):
-    '''
-    View for creating a course
-    '''
-    model = Course
-    fields = ['name', 'description', 'institution', 'instructor', 'study_points']
-    template_name = 'course/create_course.html'
-    success_url = reverse_lazy('course:course_list')
+class CreateCourseView(APIView):
+    serializer_class = CreateCourseSerializer
+
+    def post(self, request):
+        serializer = CreateCourseSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save() 
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    def form_valid(self, form):
-        form.instance.user = self.request.user
-        return super().form_valid(form)
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = 'Create Course'
-        return context
