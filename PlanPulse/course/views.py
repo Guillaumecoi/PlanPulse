@@ -9,6 +9,9 @@ class CreateCourseView(APIView):
     serializer_class = CreateCourseSerializer
 
     def post(self, request):
+        if not self.request.user.is_authenticated:
+            return Response({"error": "You must be logged in to create a course"}, status=status.HTTP_403_FORBIDDEN)
+
         serializer = CreateCourseSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save() 
