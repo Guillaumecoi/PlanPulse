@@ -5,9 +5,9 @@ from django.test import TestCase
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
-from course.models.progressmetric import CourseMetric, AchievementMetric, InstanceMetric, Achievement
-from course.models.metric import Number, Time, Boolean, Percentage
-from course.models.course import Course, Chapter
+from PlanPulse.course.progress.models import CourseMetric, AchievementMetric, InstanceMetric, Achievement
+from PlanPulse.course.progress.metric import Number, Time, Boolean, Percentage
+from PlanPulse.course.models import Course, Chapter
 
           
 class CourseMetricsTest(TestCase):

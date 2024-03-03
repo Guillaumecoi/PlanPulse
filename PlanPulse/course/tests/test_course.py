@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
-from course.models.course import Course, Chapter
+from PlanPulse.course.models import Course, Chapter
 
 class CourseModelTest(TestCase):
     def setUp(self):

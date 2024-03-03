@@ -4,7 +4,7 @@ from django.forms import ValidationError
 from datetime import timedelta
 from decimal import Decimal
 
-from course.models.metric import Number, Boolean, Time, Percentage
+from PlanPulse.course.progress.metric import Number, Boolean, Time, Percentage
 
 class NumberTest(unittest.TestCase):
     def setUp(self):
