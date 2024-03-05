@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from polymorphic.models import PolymorphicModel
 
+
 class Trackable(PolymorphicModel):
     '''
     Base model for trackable objects
