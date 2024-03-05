@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from datetime import timedelta
-from course.models import Course
+from PlanPulse.course.models.models import Course
 
 
 user, created = User.objects.create_user(username='testuser', password='testpassword')

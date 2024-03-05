@@ -7,7 +7,7 @@ from datetime import timedelta
 from decimal import Decimal
 from course.progress.models import CourseMetric, AchievementMetric, InstanceMetric, Achievement
 from course.progress.metric import Number, Time, Boolean, Percentage
-from course.models import Course, Chapter
+from course.models.models import Course, Chapter
 
           
 class CourseMetricsTest(TestCase):

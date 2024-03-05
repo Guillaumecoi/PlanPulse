@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
-from course.models import Course, Chapter
+from course.models.models import Course, Chapter
 
 class CourseModelTest(TestCase):
     def setUp(self):

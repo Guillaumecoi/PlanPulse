@@ -1,5 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
-from .models import Course, Chapter
+from .models.models import Course, Chapter
 from .progress.models import CourseMetric, AchievementMetric, InstanceMetric, Achievement, StudySession
 
 def create_course(user, name, description, institution, instructor, study_points):
