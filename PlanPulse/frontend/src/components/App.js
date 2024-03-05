@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Route, Link, Routes } from 'react-router-dom';
 import HomePage from './HomePage';
 import CreateCoursePage from './CreateCoursePage';
 import SelectCoursePage from './SelectCoursePage';
+import Navbar from './Navbar';
 
 export default class App extends Component {
     constructor(props) {
@@ -13,6 +14,7 @@ export default class App extends Component {
     render() {
         return (
             <Router>
+                <Navbar />
                 <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/course/create" element={<CreateCoursePage />} />
