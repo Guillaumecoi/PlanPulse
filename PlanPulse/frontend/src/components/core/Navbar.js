@@ -1,8 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { AppBar, Toolbar, Typography, Button } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 
 const Navbar = ({ isLoggedIn }) => {
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        const response = await fetch('/api/user/logout', { method: 'POST' });
+
+        if (response.ok) {
+            navigate('/');
+        } else {
+            console.error('Logout failed');
+        }
+    };
+
     return (
         <AppBar position="static" style={{ height: '60px' }}>
             <Toolbar>
@@ -12,7 +24,7 @@ const Navbar = ({ isLoggedIn }) => {
                 {isLoggedIn ? (
                     <>
                         <Button color="inherit" component={RouterLink} to="/profile">Profile</Button>
-                        <Button color="inherit" component={RouterLink} to="/logout">Logout</Button>
+                        <Button color="inherit" onClick={handleLogout}>Logout</Button>
                     </>
                 ) : (
                     <>
