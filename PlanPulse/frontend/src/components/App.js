@@ -3,8 +3,8 @@ import axios from 'axios';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import HomePage from './HomePage';
-import CreateCoursePage from './course/CreateCoursePage';
-import SelectCoursePage from './course/SelectCoursePage';
+import CreateCoursePage from './course/CreateCourse';
+import CourseList from './course/CourseList';
 import Navbar from './core/Navbar';
 import LoginPage from './users/LoginPage';
 import RegisterPage from './users/RegisterPage';
@@ -50,7 +50,7 @@ const App = () => {
                     <Route path="/register" element={<RegisterPage isLoggedIn={isLoggedIn} />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/course/create" element={<CreateCoursePage isLoggedIn={isLoggedIn} />} />
-                    <Route path="/course" element={<SelectCoursePage isLoggedIn={isLoggedIn} />} />
+                    <Route path="/course" element={<CourseList isLoggedIn={isLoggedIn} />} />
                 </Routes>
             </Router>
         </div>
